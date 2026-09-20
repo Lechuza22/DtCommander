@@ -72,8 +72,9 @@ flowchart TD
   [[plan (Plan A / Plan B / Plan C)]]. `#addMatchForm` sigue el mismo
   patrón inline que `#addPlayerForm` (sin `prompt()` del navegador).
 - **`#suggestions`** arranca oculto (`hidden`) y solo se muestra al pasar
-  el mouse por una jugadora en la cancha — ver `showSuggestions()` en
-  [js/app.js](js/app.md).
+  el mouse por una jugadora en la cancha. Contiene su gráfico de estrella
+  (`#suggestionsRadar`) y la lista de alternativas (`#suggestionsList`) —
+  ver `showSuggestions()` en [js/app.js](js/app.md).
 - **`#saveEvalForm`** (mismo patrón inline que `#addPlayerForm`) es el
   único lugar que agrega un punto al
   [[historial de evaluaciones]] de una jugadora — ver el
