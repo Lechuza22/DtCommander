@@ -97,11 +97,22 @@ flowchart TD
 
 ## Estado
 
-### `emptyAttrs()` / `formatAttrValue(value)`
+### `emptyAttrs()` / `makeEmptyPlayer()` / `formatAttrValue(value)`
 
-`emptyAttrs()` da los once atributos en `5` (valor neutro) al crear una
-jugadora. `formatAttrValue()` muestra ese número con coma decimal (`7,5`)
-en vez del punto que usa nativamente el `<input type="range">`.
+`emptyAttrs()` da los once atributos en `5` (valor neutro).
+`makeEmptyPlayer()` arma el objeto completo de una jugadora nueva
+(`attrs`, `posPrincipal`, `posSecundaria`, los datos básicos `apodo` /
+`edad` / `altura` / `pieDominante` —todos `''`— e `history: []`); lo
+usan tanto `defaultState()` como el alta manual con "+ Jugadora", para
+que la forma del objeto viva en un solo lugar. Como las jugadoras que
+vienen de la Sheet pueden no traer los campos nuevos (datos cargados
+antes de que existieran), todo el código que los lee usa `|| ''` en
+vez de asumir que están. `formatAttrValue()` muestra un atributo con
+coma decimal (`7,5`) en vez del punto que usa nativamente el
+`<input type="range">`.
+
+`PIE_DOMINANTE_OPTIONS` (`Derecho` / `Izquierdo` / `Ambos`) es el
+catálogo del select de pie dominante, mismo patrón que `POSITIONS`.
 
 ### `todayISO()` / `formatDateDisplay(iso)` / `matchLabel(match)`
 
@@ -198,9 +209,18 @@ click se reutiliza en `#removeMatchBtn` (ver `setupMatchControls()`).
 
 ### `renderPlayerSelect()` / `renderEvaluador()` / `exportCsv()`
 
-Sin cambios de fondo respecto a antes: sincronizan el `<select>` de
-jugadoras y los inputs con `currentPlayer`, y arman el CSV de
-exportación (siempre con los valores **actuales**, no el historial).
+`renderPlayerSelect` y `renderEvaluador` sincronizan el `<select>` de
+jugadoras y todos los inputs (datos básicos, posiciones, sliders) con
+`currentPlayer`. `exportCsv` arma el CSV con los valores **actuales**
+(no el historial), incluyendo los datos básicos.
+
+Los datos básicos (`#playerApodo`, `#playerEdad`, `#playerAltura`,
+`#playerPieDominante`) se cablean en `setupEvaluador()` con un único
+`forEach` sobre pares `[id del input, campo]`: cada uno escribe
+`el.value.trim()` en `state.players[currentPlayer][campo]` y llama a
+`saveState()`, igual que los sliders — se guardan al instante, sin
+botón. Se guardan como texto tal cual (incluida la edad y la altura),
+sin conversión a número.
 
 ### `updateRadarChart()` / `buildOrUpdateRadar(existingChart, canvasId, label, data)`
 
@@ -247,12 +267,25 @@ en sí no se destruye, así que el delegado sobrevive.
 
 ### `renderDashboard()`
 
-Redibuja las cinco secciones de la pestaña a partir de
-`state.players[currentPlayer]`: el radar de "Perfil actual" y las
-barras de "Atributos" (ambos con valores en vivo), y delega en
+Redibuja las secciones de la pestaña a partir de
+`state.players[currentPlayer]`: los datos básicos
+(`renderDashboardPlayerInfo`), el radar de "Perfil actual" y la lista
+de "Atributos" (ambos con valores en vivo), y delega en
 `renderDashboardDiff`, `updateDashboardTrend` y
 `renderDashboardTimeline` — estas tres reciben el `history` ya
 ordenado por fecha.
+
+### `escapeHtml(text)` / `renderDashboardPlayerInfo(player)`
+
+`renderDashboardPlayerInfo` muestra, de solo lectura, nombre, apodo,
+edad (`"12 años"`), altura (`"145 cm"`), pie dominante y posiciones;
+lo que la jugadora no tenga cargado se ve como `—`. Los valores pasan
+por `escapeHtml` antes de entrar a `innerHTML`: el apodo es texto libre
+y la Sheet se puede editar desde afuera de la app, así que sin escapar
+un apodo con etiquetas HTML se ejecutaría en el navegador de quien mira
+el dashboard. (Ojo: otros textos libres de la app —notas de la rúbrica,
+etiquetas de evaluación, rival del partido— todavía se insertan sin
+escapar; no se tocaron en este cambio.)
 
 ### `ATTR_VALUE_COLORS` / `colorForAttrValue(value)` / `renderDashboardAttrsGrid(player)`
 
