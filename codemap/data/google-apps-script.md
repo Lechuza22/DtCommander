@@ -51,9 +51,9 @@ flowchart TD
 
 ## Esquema de hojas
 
-- **Jugadoras** — `Nombre, PosPrincipal, PosSecundaria, [11 atributos]`.
-  Una fila por jugadora, con los valores **actuales** (los que se editan
-  en vivo en Evaluador).
+- **Jugadoras** — `Nombre, Apodo, Edad, Altura, PieDominante,
+  PosPrincipal, PosSecundaria, [11 atributos]`. Una fila por jugadora,
+  con los valores **actuales** (los que se editan en vivo en Evaluador).
 - **Historial** — `Jugadora, Fecha, Etiqueta, [11 atributos]`. Una fila
   por cada evaluación guardada explícitamente (ver
   [[historial de evaluaciones]] en el [Glosario](../../GLOSSARY.md)) —
@@ -110,8 +110,21 @@ se la pide, así que la primera sincronización crea solas las hojas
 
 ## Jugadoras: `readPlayers_()` / `writePlayers_(players)`
 
-Sin cambios respecto a la versión anterior — el esquema de esta hoja no
-se tocó al agregar Partidos/Planes ni al agregar Historial.
+`readPlayers_` arma un mapa `nombre de encabezado → índice de columna`
+a partir de la primera fila y busca cada campo por ese nombre (helper
+`cell(row, header)`), no por posición fija. Eso permite que una Sheet
+con el formato **viejo** (sin `Apodo`/`Edad`/`Altura`/`PieDominante`)
+se siga leyendo bien con el código nuevo —los campos que faltan quedan
+como `''`— y que el orden de columnas pueda cambiar sin romper la
+lectura: entre el momento en que se redeploya el script y la próxima
+escritura desde la app (que reescribe la hoja completa en el formato
+nuevo), no hay ventana donde los datos se lean corridos de columna.
+
+`writePlayers_` reescribe la hoja entera con `JUGADORAS_HEADERS`
+(identidad/texto primero: `JUGADORAS_TEXT_HEADERS`, después los
+atributos). Las columnas de texto se escriben con `setNumberFormat('@')`
+para que Sheets no "interprete" un apodo tipo `1-2` como fecha; los
+atributos quedan numéricos.
 
 ## Historial: `attachHistory_(players)` / `writeHistory_(players)`
 
