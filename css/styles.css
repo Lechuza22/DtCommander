@@ -332,6 +332,14 @@ input[type="range"] { width: 100%; }
   border-top: 1px dashed var(--border);
 }
 
+.suggestions-radar {
+  position: relative;
+  width: 100%;
+  max-width: 220px;
+  height: 200px;
+  margin: 0 auto 0.9rem;
+}
+
 .suggestions h3 {
   margin: 0 0 0.5rem;
   font-size: 13px;
@@ -508,7 +516,7 @@ input[type="range"] { width: 100%; }
 
 .field-layout {
   display: grid;
-  grid-template-columns: 180px 1fr;
+  grid-template-columns: 240px 1fr;
   gap: 1.25rem;
 }
 
@@ -563,6 +571,25 @@ input[type="range"] { width: 100%; }
 }
 
 @media (max-width: 640px) {
+  /* En celular el panel de la jugadora que se está mirando flota arriba a la
+     derecha en vez de empujar la cancha hacia abajo: si la cancha se moviera
+     mientras se arrastra con el dedo, la jugadora caería en otro lugar. */
+  .suggestions {
+    position: fixed;
+    top: 8px;
+    right: 8px;
+    width: 240px;
+    max-height: 80vh;
+    overflow: hidden;
+    margin: 0;
+    padding: 0.75rem;
+    z-index: 900;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+    pointer-events: none;
+  }
   .field-layout { grid-template-columns: 1fr; }
   .attrs-chart-layout { grid-template-columns: 1fr; }
   .available-list { flex-direction: row; flex-wrap: wrap; }
