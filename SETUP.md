@@ -54,8 +54,9 @@ Nueva versión → Implementar**. La URL no cambia.
 Al desplegar, el script crea (si no existen) seis hojas dentro de tu
 spreadsheet:
 
-- **Jugadoras**: una fila por jugadora, con posición principal,
-  secundaria y sus 11 atributos **actuales**.
+- **Jugadoras**: una fila por jugadora, con sus datos básicos (apodo,
+  edad, altura, pie dominante), posición principal y secundaria, y sus
+  11 atributos **actuales**.
 - **Historial**: una fila por cada evaluación guardada con el botón
   "Guardar evaluación" (jugadora, fecha, etiqueta y los 11 atributos en
   ese momento) — es lo que alimenta el progreso en el tiempo de la
