@@ -242,14 +242,21 @@ Los datos básicos (`#playerApodo`, `#playerEdad`, `#playerAltura`,
 botón. Se guardan como texto tal cual (incluida la edad y la altura),
 sin conversión a número.
 
-### `updateRadarChart()` / `buildOrUpdateRadar(existingChart, canvasId, label, data)`
+### `updateRadarChart()` / `buildOrUpdateRadar(existingChart, canvasId, label, data, compact = false)`
 
 `buildOrUpdateRadar` es el constructor de radar de Chart.js
-factorizado para poder dibujar el mismo tipo de gráfico en dos
-`<canvas>` distintos: `#radarChart` (Evaluador, vía `updateRadarChart()`)
-y `#dashboardRadarChart` (pestaña Jugadora, vía `renderDashboard()`). Si
+factorizado para poder dibujar el mismo tipo de gráfico en tres
+`<canvas>` distintos: `#radarChart` (Evaluador, vía `updateRadarChart()`),
+`#dashboardRadarChart` (pestaña Jugadora, vía `renderDashboard()`) y
+`#suggestionsRadar` (Formación, vía `showSuggestions()`). Si
 ya existe una instancia para ese canvas, actualiza sus datos; si no,
 crea el `Chart` nuevo.
+
+`compact = true` es la variante chica del panel de sugerencias: oculta los
+números de los anillos, abrevia las etiquetas de los ejes a 3 letras
+(`Téc`, `Peg`, `Def`...), desactiva la animación y usa
+`maintainAspectRatio: false` para respetar el alto fijo de
+`.suggestions-radar`.
 
 ### "Guardar evaluación" (dentro de `setupEvaluador()`)
 
@@ -414,14 +421,23 @@ sugerencias).
 
 ### `showSuggestions(name)` / `hideSuggestions()`
 
-Al pasar el mouse sobre una jugadora ubicada, busca en `state.players`
+Al pasar el mouse sobre una jugadora ubicada, el panel `#suggestions`
+muestra dos cosas: arriba el **gráfico de estrella (radar)** de la jugadora
+señalada (`#suggestionsRadar`, alimentado con sus atributos vía
+`buildOrUpdateRadar(..., compact = true)`; la instancia se guarda en
+`suggestionsRadarChart` y se reutiliza, solo cambian los datos al pasar a
+otra jugadora), y abajo "Alternativas": busca en `state.players`
 quiénes **no** están ubicadas en la forma táctica activa y comparten
 posición principal o secundaria con ella, y las muestra como chips
-debajo de "Disponibles" (`#suggestions`/`#suggestionsList`). Esos chips
+(`#suggestionsList`). Esos chips
 son **arrastrables**: reutilizan `onChipPointerDown`, así que se puede
 llevar directamente a una alternativa sugerida a la cancha. Si la
 jugadora no tiene posición cargada, o no hay alternativas libres, se
-muestra un mensaje en vez de la lista.
+muestra un mensaje en vez de la lista (el radar se muestra igual).
+
+En pantallas de hasta 640px el panel pasa a `position: fixed` (flotante,
+arriba a la derecha, con `pointer-events: none`) para que aparecer y
+desaparecer no mueva la cancha mientras se arrastra con el dedo.
 
 ### `svgPointFromClient` / `clampToField` / `isOverField` / `onChipPointerDown` / `moveGhost`
 
