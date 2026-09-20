@@ -11,6 +11,8 @@ const ATTRIBUTES = [
 
 const POSITIONS = ['Arquera', 'Defensa', 'Mediocampo', 'Delantera'];
 
+const PIE_DOMINANTE_OPTIONS = ['Derecho', 'Izquierdo', 'Ambos'];
+
 const POSITION_COLORS = {
   'Arquera': '#d4a017',
   'Defensa': '#185FA5',
@@ -216,6 +218,19 @@ function emptyAttrs() {
   return a;
 }
 
+function makeEmptyPlayer() {
+  return {
+    attrs: emptyAttrs(),
+    posPrincipal: '',
+    posSecundaria: '',
+    apodo: '',
+    edad: '',
+    altura: '',
+    pieDominante: '',
+    history: []
+  };
+}
+
 // Muestra los atributos con coma decimal (5, 5,5, 6…) en vez del punto que usa el <input type="range">
 function formatAttrValue(value) {
   const n = Number(value);
@@ -288,7 +303,7 @@ function makeMatch(rival, date) {
 function defaultState() {
   const players = {};
   DEFAULT_PLAYERS.forEach(name => {
-    players[name] = { attrs: emptyAttrs(), posPrincipal: '', posSecundaria: '', history: [] };
+    players[name] = makeEmptyPlayer();
   });
   const matchId = 'm' + Date.now();
   const match = makeMatch('', todayISO());
@@ -487,7 +502,7 @@ function setupEvaluador() {
       addPlayerError.textContent = `Ya existe una jugadora llamada "${clean}".`;
       return;
     }
-    state.players[clean] = { attrs: emptyAttrs(), posPrincipal: '', posSecundaria: '', history: [] };
+    state.players[clean] = makeEmptyPlayer();
     currentPlayer = clean;
     addForm.hidden = true;
     saveState();
@@ -542,6 +557,22 @@ function setupEvaluador() {
     saveState();
   });
 
+  // Datos básicos (apodo, edad, altura, pie dominante): se guardan tal cual,
+  // sin validaciones más allá de los límites de cada input en el HTML.
+  [
+    ['playerApodo', 'apodo'],
+    ['playerEdad', 'edad'],
+    ['playerAltura', 'altura'],
+    ['playerPieDominante', 'pieDominante']
+  ].forEach(([elementId, field]) => {
+    const el = document.getElementById(elementId);
+    el.addEventListener(el.tagName === 'SELECT' ? 'change' : 'input', () => {
+      if (!currentPlayer) return;
+      state.players[currentPlayer][field] = el.value.trim();
+      saveState();
+    });
+  });
+
   document.getElementById('exportCsvBtn').addEventListener('click', exportCsv);
 
   const saveEvalForm = document.getElementById('saveEvalForm');
@@ -584,6 +615,9 @@ function setupEvaluador() {
     sel.innerHTML = '<option value="">Seleccionar…</option>' +
       POSITIONS.map(p => `<option value="${p}">${p}</option>`).join('');
   });
+
+  document.getElementById('playerPieDominante').innerHTML = '<option value="">Seleccionar…</option>' +
+    PIE_DOMINANTE_OPTIONS.map(p => `<option value="${p}">${p}</option>`).join('');
 
   const slidersContainer = document.getElementById('slidersContainer');
   ATTRIBUTES.forEach(attr => {
@@ -629,6 +663,10 @@ function renderEvaluador() {
   });
   document.getElementById('posPrincipal').value = player.posPrincipal || '';
   document.getElementById('posSecundaria').value = player.posSecundaria || '';
+  document.getElementById('playerApodo').value = player.apodo || '';
+  document.getElementById('playerEdad').value = player.edad || '';
+  document.getElementById('playerAltura').value = player.altura || '';
+  document.getElementById('playerPieDominante').value = player.pieDominante || '';
   updateRadarChart();
 }
 
@@ -671,9 +709,13 @@ function updateRadarChart() {
 }
 
 function exportCsv() {
-  const rows = [['Jugadora', 'PosPrincipal', 'PosSecundaria', ...ATTRIBUTES]];
+  const rows = [['Jugadora', 'Apodo', 'Edad', 'Altura', 'PieDominante', 'PosPrincipal', 'PosSecundaria', ...ATTRIBUTES]];
   Object.entries(state.players).forEach(([name, p]) => {
-    rows.push([name, p.posPrincipal || '', p.posSecundaria || '', ...ATTRIBUTES.map(a => p.attrs[a])]);
+    rows.push([
+      name, p.apodo || '', p.edad || '', p.altura || '', p.pieDominante || '',
+      p.posPrincipal || '', p.posSecundaria || '',
+      ...ATTRIBUTES.map(a => p.attrs[a])
+    ]);
   });
   const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -731,6 +773,7 @@ function renderDashboard() {
 
   const hasPlayer = !!currentPlayer;
   document.getElementById('dashboardContent').style.display = hasPlayer ? '' : 'none';
+  document.getElementById('dashboardInfoCard').style.display = hasPlayer ? '' : 'none';
   document.getElementById('dashboardEmpty').style.display = hasPlayer ? 'none' : '';
   if (!hasPlayer) return;
   sel.value = currentPlayer;
@@ -738,6 +781,7 @@ function renderDashboard() {
   const player = state.players[currentPlayer];
   const history = (player.history || []).slice().sort((a, b) => (a.date || '').localeCompare(b.date || ''));
 
+  renderDashboardPlayerInfo(player);
   const data = ATTRIBUTES.map(a => player.attrs[a]);
   dashboardRadarChart = buildOrUpdateRadar(dashboardRadarChart, 'dashboardRadarChart', currentPlayer, data);
   renderDashboardAttrsGrid(player);
@@ -745,6 +789,33 @@ function renderDashboard() {
   renderDashboardDiff(player, history);
   updateDashboardTrend(player, history);
   renderDashboardTimeline(history);
+}
+
+// El apodo es texto libre (y la Sheet es editable desde afuera de la app),
+// así que se escapa antes de meterlo en innerHTML.
+function escapeHtml(text) {
+  return String(text).replace(/[&<>"']/g, ch => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]
+  ));
+}
+
+// Datos básicos de la jugadora, de solo lectura (se editan en Evaluador).
+function renderDashboardPlayerInfo(player) {
+  const container = document.getElementById('dashboardPlayerInfo');
+  if (!container) return;
+  const items = [
+    ['Nombre', currentPlayer],
+    ['Apodo', player.apodo],
+    ['Edad', player.edad ? `${player.edad} años` : ''],
+    ['Altura', player.altura ? `${player.altura} cm` : ''],
+    ['Pie dominante', player.pieDominante],
+    ['Posición', [player.posPrincipal, player.posSecundaria].filter(Boolean).join(' / ')]
+  ];
+  container.innerHTML = items.map(([label, value]) => `
+    <div class="player-info-item">
+      <span class="hint">${label}</span>
+      <span class="player-info-value">${value ? escapeHtml(value) : '—'}</span>
+    </div>`).join('');
 }
 
 // Se arma una sola vez: qué significa cada color de las barras.
