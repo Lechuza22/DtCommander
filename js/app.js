@@ -641,9 +641,12 @@ function setupEvaluador() {
   ATTRIBUTES.forEach(attr => {
     const row = document.createElement('div');
     row.className = 'slider-group';
+    // El slider trabaja con el valor guardado (1-10), pero cada paso es de
+    // 1 punto de la escala que se ve (1-100): 1 / SCORE_SCALE = 0,1.
+    const onePoint = 1 / SCORE_SCALE;
     row.innerHTML = `
       <span class="slider-label">${attr}</span>
-      <input type="range" min="1" max="10" step="0.5" value="5" data-attr="${attr}">
+      <input type="range" min="${onePoint}" max="10" step="${onePoint}" value="5" data-attr="${attr}">
       <span class="slider-value">50</span>
     `;
     slidersContainer.appendChild(row);
