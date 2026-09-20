@@ -21,6 +21,10 @@ sea fácil ubicar qué tocar.
 - **Layout general**: `header`, `.tabs`, `.container`, `.card` — la
   estructura de tarjetas que envuelve cada bloque de Evaluador y
   Formación.
+- **Login**: `.login-gate` (overlay `position: fixed` a pantalla
+  completa que tapa todo), `.login-card` (el formulario en sí),
+  `.btn-logout` (botón ⏻ en el header) — ver
+  [js/auth.md](../js/auth.md).
 - **Evaluador**: `.roster-controls`, `.position-controls`,
   `.slider-group` (grilla de 3 columnas: label, input range, valor),
   `.attrs-chart-layout` (grilla de 2 columnas: atributos al lado del
