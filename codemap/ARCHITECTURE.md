@@ -13,9 +13,12 @@ automáticamente contra una Google Sheet.
 ```mermaid
 graph LR
     HTML["index.html"] --> CSS["css/styles.css"]
+    HTML --> AuthJS["js/auth.js"]
     HTML --> ChartJS["Chart.js (CDN)"]
     HTML --> SheetsJS["js/sheets-integration.js"]
     HTML --> AppJS["js/app.js"]
+
+    AuthJS -->|"tapa/destapa #appRoot"| LocalStorage["localStorage"]
 
     AppJS -->|"render radar"| ChartJS
     AppJS -->|"leer/escribir"| LocalStorage["localStorage"]
@@ -35,7 +38,12 @@ Google — no hay ningún servidor intermedio propio.
 
 ## Flujo típico de una sesión
 
-1. Se abre `index.html`. `js/app.js` carga el estado desde `localStorage`
+0. Se abre `index.html`. Antes que nada, `js/auth.js` decide si mostrar
+   `#loginGate` (pantalla de login) o `#appRoot` (la app entera),
+   según si ese navegador ya tiene la marca de sesión guardada. Es una
+   pantalla disuasoria, no una autenticación real — ver
+   [js/auth.md](js/auth.md).
+1. Con `#appRoot` visible: `js/app.js` carga el estado desde `localStorage`
    (o crea el estado por defecto con Ine y Agos si es la primera vez).
 2. En paralelo, le pide a `js/sheets-integration.js` (`hydrate()`) los
    datos remotos. Si la Sheet responde, esos datos reemplazan al estado
@@ -56,10 +64,18 @@ Google — no hay ningún servidor intermedio propio.
    se está sincronizado, sincronizando, sin conexión, o sin Sheets
    configurado todavía.
 
+## Otros archivos
+
+- `images/` — assets sueltos (por ejemplo escudos) que el usuario va
+  agregando. No hay ningún código que los use todavía; cuando se
+  conecte alguno a la UI (por ejemplo como logo del header), se
+  documenta acá.
+
 ## Índice de módulos
 
 - [index.md](index.md) — estructura HTML
 - [css/styles.md](css/styles.md) — estilos
+- [js/auth.md](js/auth.md) — pantalla de login (disuasoria, no real)
 - [js/app.md](js/app.md) — estado, Evaluador, Jugadora, Formación (drag & drop), Entrenamiento
 - [js/sheets-integration.md](js/sheets-integration.md) — sync automática con Sheets
 - [data/google-apps-script.md](data/google-apps-script.md) — backend en Apps Script
