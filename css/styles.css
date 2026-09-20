@@ -214,7 +214,7 @@ select {
 
 .position-controls {
   display: flex;
-  gap: 1.5rem;
+  gap: 1.1rem;
   flex-wrap: wrap;
 }
 
@@ -224,6 +224,34 @@ select {
   gap: 0.35rem;
   font-size: 13px;
   color: #556;
+}
+
+.position-controls input {
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  font-size: 14px;
+  width: 100px;
+}
+
+.player-info-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+}
+
+.player-info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.player-info-item .hint { margin: 0; }
+
+.player-info-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--primary-dark);
 }
 
 .attrs-chart-layout {
