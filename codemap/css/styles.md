@@ -25,7 +25,10 @@ sea fácil ubicar qué tocar.
   completa que tapa todo), `.login-card` (el formulario en sí),
   `.btn-logout` (botón ⏻ en el header) — ver
   [js/auth.md](../js/auth.md).
-- **Evaluador**: `.roster-controls`, `.position-controls`,
+- **Evaluador**: `.roster-controls`, `.position-controls` (fila flex con
+  wrap para los seis campos de "Datos de la jugadora": apodo, edad,
+  altura, pie dominante y las dos posiciones — entran en una fila en
+  escritorio y se acomodan solos en celular),
   `.slider-group` (grilla de 3 columnas: label, input range, valor),
   `.attrs-chart-layout` (grilla de 2 columnas: atributos al lado del
   radar chart, colapsa a 1 columna en mobile).
@@ -46,7 +49,9 @@ sea fácil ubicar qué tocar.
   formulario de la rúbrica, con su propio layout en grilla en vez de
   reutilizar `.add-player-form` porque tiene bastantes más campos),
   `.training-log-notes` (observaciones de cada fila del historial).
-- **Jugadora (dashboard)**: `.diff-row` (grilla de 3 columnas: atributo,
+- **Jugadora (dashboard)**: `.player-info-row` / `.player-info-item` /
+  `.player-info-value` (la tarjeta de datos básicos: etiqueta chica
+  arriba, valor en negrita abajo), `.diff-row` (grilla de 3 columnas: atributo,
   valor, delta), `.diff-up` / `.diff-down` / `.diff-same` (verde/rojo/gris
   para el progreso), `.timeline-row` / `.timeline-head` / `.timeline-avg`
   (cada fila del historial), `.btn-small` (el botón "Eliminar" de una
