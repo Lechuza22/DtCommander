@@ -40,6 +40,57 @@ header h1 {
   font-size: 24px;
 }
 
+.btn-logout {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  color: #fff;
+  border-radius: 6px;
+  width: 28px;
+  height: 28px;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+.btn-logout:hover { background: rgba(255, 255, 255, 0.15); }
+
+.login-gate {
+  position: fixed;
+  inset: 0;
+  background: var(--primary-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  z-index: 1000;
+}
+
+.login-card {
+  background: var(--card-bg);
+  border-radius: 12px;
+  padding: 2rem;
+  width: 100%;
+  max-width: 320px;
+  text-align: center;
+}
+
+.login-card h1 { margin: 0; color: var(--primary-dark); }
+.login-card .hint { margin: 0.4rem 0 1.2rem; }
+
+.login-card form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.login-card input {
+  padding: 0.6rem 0.75rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  font-size: 14px;
+}
+
+.login-card .btn { margin-top: 0.25rem; }
+
 .sync-status {
   font-size: 14px;
   cursor: default;
