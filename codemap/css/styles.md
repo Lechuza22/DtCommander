@@ -33,10 +33,13 @@ sea fácil ubicar qué tocar.
   `.attrs-chart-layout` (grilla de 2 columnas: atributos al lado del
   radar chart, colapsa a 1 columna en mobile).
 - **Formación**: `.plan-tabs` / `.plan-tab-btn` (solapas Plan A/B/C),
-  `.field-layout` (grilla de 2 columnas: disponibles + cancha),
+  `.field-layout` (grilla de 2 columnas: disponibles 240px + cancha),
   `.player-chip` (jugadora sin ubicar, reutilizado también en
-  `#suggestionsList`), `.suggestions` (panel de alternativas, oculto por
-  defecto), `.field-bg` / `.field-line` / `.field-line-fill` (dibujo de
+  `#suggestionsList`), `.suggestions` (panel de radar + alternativas,
+  oculto por defecto; en pantallas de hasta 640px pasa a
+  `position: fixed` flotante para no desplazar la cancha),
+  `.suggestions-radar` (contenedor de alto fijo 200px del radar
+  compacto), `.field-bg` / `.field-line` / `.field-line-fill` (dibujo de
   la cancha en SVG), `.player-token` / `.token-circle` / `.token-label`
   (jugadora ubicada).
 - **Formularios inline** (alta de jugadora, de partido, y de evaluación):
