@@ -18,7 +18,7 @@ flowchart TD
 
     PanelEvaluador["#panel-evaluador"] --> PlayerSelect["#playerSelect"]
     PanelEvaluador --> AddRemove["#addPlayerBtn / #addPlayerForm / #removePlayerBtn"]
-    PanelEvaluador --> Positions["#posPrincipal / #posSecundaria"]
+    PanelEvaluador --> PlayerData["#playerApodo / #playerEdad / #playerAltura / #playerPieDominante / #posPrincipal / #posSecundaria"]
     PanelEvaluador --> AttrsChart[".attrs-chart-layout (grid 2 columnas)"]
     AttrsChart --> Sliders["#slidersContainer (vacío, se llena por JS)"]
     AttrsChart --> Radar["#radarChart (canvas)"]
@@ -26,6 +26,7 @@ flowchart TD
     PanelEvaluador --> ExportBtn["#exportCsvBtn"]
 
     PanelJugadora["#panel-jugadora"] --> DashSelect["#dashboardPlayerSelect"]
+    PanelJugadora --> DashInfo["#dashboardInfoCard / #dashboardPlayerInfo (datos básicos, solo lectura)"]
     PanelJugadora --> DashDiff["#dashboardDiff"]
     PanelJugadora --> DashRadar["#dashboardRadarChart (canvas)"]
     PanelJugadora --> DashAttrs["#dashboardAttrsGrid + #attrColorLegend"]
