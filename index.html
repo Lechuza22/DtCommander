@@ -58,12 +58,24 @@
 
       <div id="evaluadorContent">
         <div class="card">
-          <h2>Posición</h2>
+          <h2>Datos de la jugadora</h2>
           <div class="position-controls">
-            <label>Principal
+            <label>Apodo
+              <input type="text" id="playerApodo" maxlength="30" placeholder="Opcional">
+            </label>
+            <label>Edad
+              <input type="number" id="playerEdad" min="4" max="99" placeholder="Años">
+            </label>
+            <label>Altura (cm)
+              <input type="number" id="playerAltura" min="80" max="220" placeholder="cm">
+            </label>
+            <label>Pie dominante
+              <select id="playerPieDominante"></select>
+            </label>
+            <label>Posición principal
               <select id="posPrincipal"></select>
             </label>
-            <label>Secundaria
+            <label>Posición secundaria
               <select id="posSecundaria"></select>
             </label>
           </div>
@@ -103,6 +115,10 @@
         <div class="roster-controls">
           <select id="dashboardPlayerSelect"></select>
         </div>
+      </div>
+
+      <div id="dashboardInfoCard" class="card">
+        <div id="dashboardPlayerInfo" class="player-info-row"></div>
       </div>
 
       <div id="dashboardEmpty" class="card" style="display:none;">
