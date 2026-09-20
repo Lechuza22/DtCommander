@@ -67,32 +67,60 @@ function getOrCreateSheet_(name, headers) {
 }
 
 // ---- Jugadoras ----
+// Primero las columnas de identidad/texto (JUGADORAS_TEXT_HEADERS),
+// después los atributos (numéricos).
+const JUGADORAS_TEXT_HEADERS = ['Nombre', 'Apodo', 'Edad', 'Altura', 'PieDominante', 'PosPrincipal', 'PosSecundaria'];
+const JUGADORAS_HEADERS = JUGADORAS_TEXT_HEADERS.concat(ATTRIBUTES);
+
 function readPlayers_() {
-  const sheet = getOrCreateSheet_(SHEET_JUGADORAS, ['Nombre', 'PosPrincipal', 'PosSecundaria'].concat(ATTRIBUTES));
+  const sheet = getOrCreateSheet_(SHEET_JUGADORAS, JUGADORAS_HEADERS);
   const rows = sheet.getDataRange().getValues();
+  if (!rows.length) return {};
+
+  // Cada columna se busca por el nombre de su encabezado, no por posición
+  // fija: así una Sheet con el formato viejo (sin Apodo/Edad/Altura/PieDominante)
+  // se sigue leyendo bien, y el orden de columnas puede cambiar sin romper nada.
+  const col = {};
+  rows[0].forEach((header, idx) => { col[header] = idx; });
+  const cell = (row, header) => (header in col ? row[col[header]] : '');
+
   const players = {};
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
-    const name = row[0];
+    const name = cell(row, 'Nombre');
     if (!name) continue;
     const attrs = {};
-    ATTRIBUTES.forEach((attr, idx) => { attrs[attr] = Number(row[3 + idx]) || 5; });
-    players[name] = { posPrincipal: row[1] || '', posSecundaria: row[2] || '', attrs };
+    ATTRIBUTES.forEach(attr => { attrs[attr] = Number(cell(row, attr)) || 5; });
+    players[name] = {
+      apodo: cell(row, 'Apodo') || '',
+      edad: cell(row, 'Edad') || '',
+      altura: cell(row, 'Altura') || '',
+      pieDominante: cell(row, 'PieDominante') || '',
+      posPrincipal: cell(row, 'PosPrincipal') || '',
+      posSecundaria: cell(row, 'PosSecundaria') || '',
+      attrs
+    };
   }
   return players;
 }
 
 function writePlayers_(players) {
-  const sheet = getOrCreateSheet_(SHEET_JUGADORAS, ['Nombre', 'PosPrincipal', 'PosSecundaria'].concat(ATTRIBUTES));
+  const sheet = getOrCreateSheet_(SHEET_JUGADORAS, JUGADORAS_HEADERS);
   sheet.clearContents();
-  sheet.appendRow(['Nombre', 'PosPrincipal', 'PosSecundaria'].concat(ATTRIBUTES));
+  sheet.appendRow(JUGADORAS_HEADERS);
   const rows = Object.keys(players).map(name => {
     const p = players[name];
-    return [name, p.posPrincipal || '', p.posSecundaria || ''].concat(
-      ATTRIBUTES.map(attr => (p.attrs && p.attrs[attr]) || 5)
-    );
+    return [
+      name, p.apodo || '', p.edad || '', p.altura || '', p.pieDominante || '',
+      p.posPrincipal || '', p.posSecundaria || ''
+    ].concat(ATTRIBUTES.map(attr => (p.attrs && p.attrs[attr]) || 5));
   });
-  if (rows.length) sheet.getRange(2, 1, rows.length, rows[0].length).setValues(rows);
+  if (rows.length) {
+    // Columnas de texto como texto plano: sin esto Sheets puede "interpretar"
+    // un apodo tipo "1-2" como fecha. Los atributos quedan numéricos.
+    sheet.getRange(2, 1, rows.length, JUGADORAS_TEXT_HEADERS.length).setNumberFormat('@');
+    sheet.getRange(2, 1, rows.length, rows[0].length).setValues(rows);
+  }
 }
 
 // ---- Historial (una "foto" de los atributos por jugadora, con fecha y etiqueta) ----
