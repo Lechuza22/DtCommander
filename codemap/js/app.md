@@ -1,0 +1,469 @@
+# js/app.js
+
+Es el cerebro de la aplicación: define la configuración editable (atributos,
+posiciones, formaciones, planes, sugerencias y rúbrica de entrenamiento),
+guarda todo el estado en memoria y en `localStorage`, y renderiza las
+cuatro pestañas: Evaluador (sliders + radar chart, uno al lado del otro),
+Jugadora (dashboard de solo lectura con el progreso en el tiempo),
+Formación (historial de Partidos → Plan A/B/C → forma táctica → campo SVG
+con arrastrar-y-soltar y sugerencias de alternativas) y Entrenamiento
+(sugerencias por posición + rúbrica manual, sin tocar atributos).
+
+## Jerarquía de datos en Formación
+
+```
+state.matches[matchId]              // un partido: rival + fecha
+  .plans['Plan A' | 'Plan B' | 'Plan C']   // tablero independiente
+    .formations['2-3-2' | '3-2-2' | '2-2-3' | 'Libre']
+      .placements[jugadora] = {x, y}
+```
+
+`state.activeMatch` guarda qué partido está abierto; cada partido guarda
+en `activePlan` qué Plan está abierto; cada plan guarda en
+`activeFormation` qué forma táctica está abierta. Ver [[partido (match)]]
+y [[plan (Plan A / Plan B / Plan C)]] en el [Glosario](../GLOSSARY.md).
+
+## Flujo interno
+
+```mermaid
+flowchart TD
+    DOMLoad["DOMContentLoaded"] --> setupTabs
+    DOMLoad --> setupEvaluador
+    DOMLoad --> setupFormacion
+    DOMLoad --> setupDashboard
+    DOMLoad --> renderAll
+    DOMLoad --> Hydrate["window.SheetsSync.hydrate()"]
+    Hydrate -->|hay datos remotos| normalizeRemoteState --> renderAll
+
+    renderAll --> renderPlayerSelect
+    renderAll --> renderEvaluador
+    renderAll --> renderFormacion
+    renderAll --> renderDashboard
+
+    setupEvaluador -->|slider input| updateRadarChart
+    setupEvaluador -->|slider input| saveState
+    setupEvaluador -->|"+ Jugadora"| confirmAddPlayer --> saveState
+    setupEvaluador -->|"Eliminar x2"| removePlayerFromAllBoards --> saveState
+    setupEvaluador -->|"Guardar evaluación"| confirmSaveEvaluation
+    confirmSaveEvaluation -->|agrega a player.history| saveState
+
+    renderDashboard --> renderDashboardDiff
+    renderDashboard --> updateDashboardTrend
+    renderDashboard --> renderDashboardTimeline
+    renderDashboardTimeline -->|"Eliminar x2"| saveState
+
+    setupFormacion --> setupMatchControls
+    setupFormacion --> setupPlanTabs
+    setupMatchControls -->|"+ Partido"| makeMatch --> saveState
+    setupMatchControls -->|cambiar partido| saveState
+    setupPlanTabs -->|cambiar Plan A/B/C| saveState
+    setupFormacion -->|cambiar forma táctica| saveState
+    setupFormacion -->|Restablecer/Vaciar| applyPresetToPlacements --> saveState
+
+    renderFormacion --> renderMatchSelect
+    renderFormacion --> renderPlanTabs
+    renderFormacion --> createFieldToken
+    createFieldToken -->|pointerdown| onTokenPointerDown
+    createFieldToken -->|"pointerenter/leave"| showSuggestions & hideSuggestions
+    onChipPointerDown -->|soltar sobre la cancha| saveState
+    onTokenPointerDown -->|soltar| saveState
+    onTokenPointerDown --> renderFormacion
+    onChipPointerDown --> renderFormacion
+
+    saveState --> LocalStorage["localStorage.setItem"]
+    saveState -->|si existe| ScheduleSync["window.SheetsSync.scheduleSync()"]
+```
+
+## Configuración editable (constantes)
+
+- **`ATTRIBUTES`** — array con los once atributos evaluables (sliders de
+  1 a 10, pasos de 0,5). Agregar o sacar uno acá actualiza automáticamente
+  sliders, radar chart y CSV; hay que replicarlo a mano en
+  [data/google-apps-script.js](../data/google-apps-script.md).
+- **`POSITIONS`** — catálogo de puestos (`Arquera`, `Defensa`,
+  `Mediocampo`, `Delantera`) usado en los selects de posición principal y
+  secundaria del Evaluador, y para calcular sugerencias en Formación.
+- **`FORMATION_PRESETS`** — coordenadas por defecto de cada slot para las
+  tres formaciones tácticas (`2-3-2`, `3-2-2`, `2-2-3`), más una cuarta
+  entrada `'Libre'` con array vacío: no tiene posiciones por defecto, así
+  que arranca con todas las jugadoras en "Disponibles" y se arma
+  completamente a mano. Cualquier clave cuyo preset esté vacío se trata
+  como "formación libre" (ver `isFree` en `renderFormacion()`).
+- **`PLANS`** — `['Plan A', 'Plan B', 'Plan C']`, los tres tableros
+  independientes que tiene cada partido.
+- **`DEFAULT_PLAYERS`**, **`STORAGE_KEY`**, **`FIELD_BOUNDS`** — plantel
+  inicial, clave de `localStorage`, y límites válidos de coordenadas
+  dentro del `viewBox` del SVG (10–290 x, 10–390 y).
+
+## Estado
+
+### `emptyAttrs()` / `formatAttrValue(value)`
+
+`emptyAttrs()` da los once atributos en `5` (valor neutro) al crear una
+jugadora. `formatAttrValue()` muestra ese número con coma decimal (`7,5`)
+en vez del punto que usa nativamente el `<input type="range">`.
+
+### `todayISO()` / `formatDateDisplay(iso)` / `matchLabel(match)`
+
+Helpers de fecha: `todayISO()` da la fecha de hoy en formato
+`YYYY-MM-DD` (el mismo que usa `<input type="date">`).
+`formatDateDisplay()` la pasa a `DD/MM/YYYY` para mostrar.
+`matchLabel(match)` arma el texto de una opción del selector de
+partidos, por ejemplo `"vs Boca — 01/10/2026"` o `"Partido sin rival —
+19/09/2026"` si todavía no se cargó el rival.
+
+### `applyPresetToPlacements(formationName, playerNames)`
+
+Toma el array de slots de `FORMATION_PRESETS[formationName]` y una lista
+de nombres, y devuelve un objeto `placements` asignando cada jugadora al
+slot en el mismo orden de índice.
+
+### `makeEmptyPlan()` / `makeMatch(rival, date)`
+
+`makeEmptyPlan()` arma un plan nuevo con las 4 formas tácticas
+completamente vacías (como "Libre"), a propósito: con un plantel grande,
+autocompletar 2-3-2 al crear un partido dejaba a la mayoría de las
+jugadoras ya ubicadas sin que el DT hiciera nada, y las que quedaban
+"Disponibles" eran solo 2-3. El DT arma cada plan a mano arrastrando, o
+usa "Restablecer a preset" si quiere el autocompletado para esa forma
+puntual. `makeMatch()` arma un partido nuevo con sus tres planes
+(`PLANS.forEach`), todos vacíos por igual.
+
+### `defaultState()`
+
+Construye el estado inicial cuando no hay nada en `localStorage` ni en la
+Sheet: crea `Ine` y `Agos`, un primer partido (`makeMatch`) sin rival con
+la fecha de hoy, y — solo en este caso puntual de demo con plantel
+chico — deja el Plan A ya armado en 2-3-2 vía `applyPresetToPlacements`,
+para que la primera vez que se abre la app ya se vea algo en la cancha.
+
+### `loadLocal()` / `saveState()`
+
+`loadLocal()` lee y parsea `localStorage[STORAGE_KEY]` (`null` si no hay
+nada o falla, p. ej. en navegación privada). `saveState()` es el único
+punto de escritura de estado: guarda en `localStorage` y, si
+`window.SheetsSync` está disponible (lo expone
+[js/sheets-integration.js](sheets-integration.md)), le pasa el estado
+completo para sincronizar en segundo plano.
+
+### `currentMatch()` / `currentPlan()` / `removePlayerFromAllBoards(name)`
+
+Accesores cortos para no repetir `state.matches[state.activeMatch]` en
+todos lados: `currentMatch()` devuelve el partido activo, `currentPlan()`
+el plan activo dentro de ese partido. `removePlayerFromAllBoards()`
+recorre **todos** los partidos, planes y formas tácticas para sacar a una
+jugadora eliminada de cualquier cancha donde estuviera ubicada.
+
+### `normalizeRemoteState(remote)`
+
+Adapta la respuesta de `hydrate()` a la forma que espera la app,
+garantizando que cada partido remoto tenga sus 3 planes y sus 4 formas
+tácticas aunque la Sheet no tuviera datos para alguna (evita `undefined`
+si se agregó un Plan o una forma nueva después de que ese partido ya
+existía). Si no hay ningún partido remoto, crea uno vacío para no dejar
+la pestaña Formación sin nada que mostrar.
+
+## Tabs
+
+### `setupTabs()`
+
+Cablea los botones `.tab-btn` (Evaluador / Formación, la navegación de
+más arriba — no confundir con las solapas de Plan A/B/C, que son
+internas a Formación).
+
+## Evaluador
+
+### `setupEvaluador()`
+
+Registra todos los listeners de la pestaña: cambio de jugadora
+seleccionada, alta y baja de jugadora, cambio de posición
+principal/secundaria, exportar CSV, y genera dinámicamente un
+`slider-group` por cada atributo de `ATTRIBUTES`.
+
+**Alta de jugadora**: no usa `prompt()` — el botón "+ Jugadora" muestra
+un formulario inline (`#addPlayerForm`, oculto por defecto vía el
+atributo `hidden`) con un input de texto y un botón "Agregar".
+`confirmAddPlayer()` valida el nombre (no vacío, no duplicado — el
+error se muestra en `#addPlayerError`, sin usar `alert()`) y crea la
+jugadora. Se evitan a propósito los diálogos nativos del navegador
+(`prompt`/`alert`/`confirm`) porque quedan bloqueados o no se muestran
+dentro de vistas embebidas como el preview de VS Code.
+
+**Baja de jugadora**: en vez de `confirm()`, el botón "Eliminar" queda
+"armado" tras el primer click (cambia su texto a "¿Seguro? Tocá de
+nuevo" por 3 segundos) y solo borra a la jugadora —de `state.players` y,
+vía `removePlayerFromAllBoards()`, de todos los partidos/planes/formas—
+si se lo vuelve a tocar dentro de ese lapso. El mismo patrón de doble
+click se reutiliza en `#removeMatchBtn` (ver `setupMatchControls()`).
+
+### `renderPlayerSelect()` / `renderEvaluador()` / `exportCsv()`
+
+Sin cambios de fondo respecto a antes: sincronizan el `<select>` de
+jugadoras y los inputs con `currentPlayer`, y arman el CSV de
+exportación (siempre con los valores **actuales**, no el historial).
+
+### `updateRadarChart()` / `buildOrUpdateRadar(existingChart, canvasId, label, data)`
+
+`buildOrUpdateRadar` es el constructor de radar de Chart.js
+factorizado para poder dibujar el mismo tipo de gráfico en dos
+`<canvas>` distintos: `#radarChart` (Evaluador, vía `updateRadarChart()`)
+y `#dashboardRadarChart` (pestaña Jugadora, vía `renderDashboard()`). Si
+ya existe una instancia para ese canvas, actualiza sus datos; si no,
+crea el `Chart` nuevo.
+
+### "Guardar evaluación" (dentro de `setupEvaluador()`)
+
+Es el **único** punto donde se crea un registro de
+[[historial de evaluaciones]] — mover un slider actualiza
+`player.attrs` en vivo pero no toca `player.history`. El botón
+"Guardar evaluación" abre un formulario inline (etiqueta libre +
+fecha, mismo patrón que "+ Jugadora"/"+ Partido") y
+`confirmSaveEvaluation()` clona los atributos actuales
+(`{ ...player.attrs }`, para que no queden ligados por referencia al
+objeto que se sigue editando) y los agrega a `player.history`,
+reordenando por fecha.
+
+## Jugadora (dashboard de solo lectura)
+
+Pestaña puramente de consulta: no tiene ningún control que modifique
+`player.attrs` o `player.history` — todo eso pasa en Evaluador. Sirve
+para ver el progreso de una jugadora en el tiempo.
+
+### `average(attrs)`
+
+Devuelve el promedio de los once atributos. Se usa tanto para el
+gráfico de tendencia como para el promedio de cada fila del historial.
+
+### `setupDashboard()`
+
+Cablea el `<select>` de jugadora (comparte la variable `currentPlayer`
+con Evaluador — elegir una jugadora acá también la deja seleccionada
+si volvés a Evaluador) y un único listener **delegado** sobre
+`#dashboardTimeline` para el botón "Eliminar" de cada fila del
+historial. Delegado a propósito: `renderDashboardTimeline()`
+reconstruye ese contenedor por completo en cada render, así que un
+listener puesto directamente en cada botón se perdería; el contenedor
+en sí no se destruye, así que el delegado sobrevive.
+
+### `renderDashboard()`
+
+Redibuja las cinco secciones de la pestaña a partir de
+`state.players[currentPlayer]`: el radar de "Perfil actual" y las
+barras de "Atributos" (ambos con valores en vivo), y delega en
+`renderDashboardDiff`, `updateDashboardTrend` y
+`renderDashboardTimeline` — estas tres reciben el `history` ya
+ordenado por fecha.
+
+### `ATTR_VALUE_COLORS` / `colorForAttrValue(value)` / `renderDashboardAttrsGrid(player)`
+
+Una lista vertical (nombre completo + número grande, estilo tarjeta de
+FIFA) con los once atributos, coloreada por **rango de valor** — no por
+posición (eso es `colorForPosition`, otra escala, para otro propósito).
+`colorForAttrValue` busca en `ATTR_VALUE_COLORS` (ordenado de mayor a
+menor `min`) la primera banda cuyo piso sea ≤ al valor: 0-2 rojo, 3-4
+naranja, 5-6 amarillo, 7 verde claro, 8+ verde oscuro, 9-10 celeste. El
+color se aplica tanto al número (`.attr-row-value`) como al borde
+izquierdo de la fila (`.attr-row`), igual que los chips de jugadora en
+Formación usan su color de posición. `renderDashboardAttrsGrid` arma el
+HTML de `#dashboardAttrsGrid` desde cero en cada render (a diferencia
+de un chart de Chart.js, acá no hay instancia que "actualizar").
+`renderAttrColorLegend()` arma, una sola vez, la referencia de esos
+colores (mismo patrón que `renderPositionLegend()` en Formación).
+
+### `renderDashboardDiff(player, history)`
+
+"Cambios desde la última evaluación": compara `player.attrs` (en vivo,
+lo que se esté viendo ahora mismo en Evaluador) contra la **última**
+entrada guardada en `history`. Cada atributo se pinta verde
+(`.diff-up`) si subió, rojo (`.diff-down`) si bajó — por ejemplo, una
+lesión que le baja la Velocidad — o gris (`.diff-same`) si no cambió.
+Si todavía no hay ninguna entrada guardada, muestra un mensaje en vez
+de la tabla.
+
+### `updateDashboardTrend(player, history)`
+
+Línea de tiempo del **promedio general**: un punto de Chart.js
+(`type: 'line'`) por cada entrada guardada del historial, más un punto
+final "Actual" con el promedio en vivo (para ver hacia dónde va la
+jugadora más allá de la última evaluación guardada). Usa
+`maintainAspectRatio: false` dentro de un contenedor `.chart-wrap` de
+alto fijo — sin eso, el canvas se estira a la altura de su contenedor
+flex y el gráfico queda desproporcionado.
+
+### `renderDashboardTimeline(history)`
+
+Lista completa del historial, más reciente primero. A diferencia de
+`renderDashboardDiff` (que siempre compara contra lo actual), acá cada
+fila se compara contra la entrada guardada **inmediatamente anterior**
+en el tiempo — así se ve la progresión partido a partido, no solo el
+último salto. El botón "Eliminar" de cada fila usa el mismo patrón de
+doble click armado que "Eliminar" jugadora/partido.
+
+## Formación
+
+### `setupFormacion()`
+
+Orquesta las tres capas: llama a `setupMatchControls()` y
+`setupPlanTabs()`, y cablea el `<select>` de forma táctica
+(`#formationSelect`, opera sobre `currentPlan()`) y el botón de
+reset/vaciar.
+
+### `setupMatchControls()` / `renderMatchSelect()`
+
+Maneja el selector de partidos (`#matchSelect`, ordenado por fecha
+descendente), el alta con formulario inline (`#addMatchForm`: rival +
+`<input type="date">`, mismo patrón que "+ Jugadora") y la baja con el
+mismo doble-click armado que "Eliminar" jugadora — no deja borrar el
+último partido que queda.
+
+### `setupPlanTabs()` / `renderPlanTabs()`
+
+Genera los tres botones de `#planTabs` a partir de `PLANS` y marca cuál
+está activo (`.active`) según `currentMatch().activePlan`.
+
+### `renderFormacion()`
+
+El render central de la pestaña: asegura que haya un partido activo
+válido, llama a `renderMatchSelect()` y `renderPlanTabs()`, sincroniza el
+selector de forma táctica y el texto del botón ("Restablecer a preset"
+vs. "Vaciar cancha" si la forma es libre), y por último dibuja
+"Disponibles" y los tokens en el campo a partir de
+`currentPlan().formations[currentPlan().activeFormation].placements`.
+También oculta el panel de sugerencias (`hideSuggestions()`) en cada
+render para que no quede una sugerencia vieja colgada al cambiar de
+partido/plan/formación.
+
+### `POSITION_COLORS` / `colorForPosition(pos)`
+
+Un color fijo por posición (`Arquera`, `Defensa`, `Mediocampo`,
+`Delantera`; gris `NO_POSITION_COLOR` si la jugadora no tiene posición
+principal cargada), para identificarlas de un vistazo en la cancha y en
+los chips. `renderPositionLegend()` arma, una sola vez, la referencia de
+colores que se ve debajo del selector de formación (`#positionLegend`).
+
+### `createPlayerChip(name)`
+
+Arma el chip de una jugadora (nombre + borde izquierdo coloreado según
+`colorForPosition`) usado tanto en "Disponibles" como en "Alternativas"
+— antes cada lugar armaba su propio `<div>` a mano; ahora comparten esta
+única función para no duplicar la lógica de color.
+
+### `createFieldToken(name, x, y)`
+
+Crea el grupo SVG que representa a una jugadora en la cancha (el círculo
+se pinta con `colorForPosition`), y le engancha `onTokenPointerDown`
+(arrastrar) y `pointerenter`/`pointerleave` (mostrar/ocultar
+sugerencias).
+
+### `showSuggestions(name)` / `hideSuggestions()`
+
+Al pasar el mouse sobre una jugadora ubicada, busca en `state.players`
+quiénes **no** están ubicadas en la forma táctica activa y comparten
+posición principal o secundaria con ella, y las muestra como chips
+debajo de "Disponibles" (`#suggestions`/`#suggestionsList`). Esos chips
+son **arrastrables**: reutilizan `onChipPointerDown`, así que se puede
+llevar directamente a una alternativa sugerida a la cancha. Si la
+jugadora no tiene posición cargada, o no hay alternativas libres, se
+muestra un mensaje en vez de la lista.
+
+### `svgPointFromClient` / `clampToField` / `isOverField` / `onChipPointerDown` / `moveGhost`
+
+Leen y escriben sobre
+`currentPlan().formations[currentPlan().activeFormation].placements` en
+vez de `state.formations[state.activeFormation].placements` (antes de
+Partidos/Planes).
+
+### `onTokenPointerDown(evt)`
+
+Arrastra una jugadora que **ya** está en la cancha. Usa el mismo patrón
+de "ghost" que `onChipPointerDown` (un `<div>` flotante que sigue al
+cursor con `position: fixed`, agregado a `document`) en vez de mover el
+propio `<g>` del SVG: si moviera el `<g>` directamente, `clampToField()`
+lo mantenía pegado visualmente al borde del campo aunque el mouse
+siguiera de largo hacia "Disponibles", dando la falsa sensación de que
+no se podía sacar a una jugadora de la cancha. Con el ghost, la jugadora
+sigue al cursor libremente por toda la pantalla; al soltar, si el cursor
+quedó fuera del `<svg>` (`isOverField()` da `false`), se borra su
+`placement` y vuelve a "Disponibles" — si quedó adentro, se actualiza su
+posición como antes.
+
+## Entrenamiento
+
+Pestaña de contenido de referencia + un registro manual — a propósito
+**no** toca `player.attrs` ni `player.history` de nadie. Sirve para
+planificar entrenamientos y dejar constancia de cómo respondió el
+equipo, pero la decisión de mejorar (o no) a una jugadora la sigue
+tomando el DT a mano en Evaluador.
+
+### `TRAINING_SUGGESTIONS`
+
+Contenido estático (no es un dato de ninguna jugadora, no se sincroniza
+con la Sheet): por cada posición de `POSITIONS` — mismo catálogo que
+usa el Evaluador — una lista de actividades agrupadas en 4 categorías
+fijas (Técnica, Táctico, Físico, Estrategia). Para agregar o cambiar
+una sugerencia, se edita este objeto directamente en
+[js/app.js](../js/app.md); no hay UI para editarlo desde la app.
+
+### `RUBRIC_DIMENSIONS` / `RUBRIC_DIMENSION_NAMES` / `RUBRIC_LABELS_BY_POSITION` / `rubricLabel(position, dimension)`
+
+La rúbrica siempre califica las mismas 5 **dimensiones** (`tecnica`,
+`tactica`, `presion`, `actitud`, `fisico` — `RUBRIC_DIMENSIONS`, 1 a 5
+cada una), para poder comparar ese eje entre puestos distintos, pero lo
+que describe cada dimensión es específico de la posición: por ejemplo
+`tecnica` en Arquera es "Manos y recepción" y en Delantera es
+"Definición y control orientado". `RUBRIC_LABELS_BY_POSITION[posición][dimensión]`
+guarda esa descripción concreta; `rubricLabel()` la busca con fallback
+a la propia key si faltara. `RUBRIC_DIMENSION_NAMES` es solo el nombre
+corto de cada dimensión (Técnica, Táctica, Bajo presión, Actitud,
+Físico) que se muestra como etiqueta chica arriba de la descripción en
+el formulario. Si se agrega o saca una dimensión hay que replicar
+`RUBRIC_DIMENSIONS` como `RUBRIC_KEYS` en
+[data/google-apps-script.js](../data/google-apps-script.md) para que
+las columnas de la Sheet coincidan (mismo patrón que
+`ATTRIBUTES`/`PLAN_NAMES`) — cambiar solo las *descripciones* por
+posición, en cambio, no toca la Sheet ni requiere redeploy, porque las
+5 keys almacenadas no cambian.
+
+### `setupEntrenamiento()` / `renderRubricCriteria()`
+
+`setupEntrenamiento()` arma las solapas de posición (mismo componente
+visual `.plan-tab-btn` que usan Plan A/B/C en Formación) y cablea los
+listeners del formulario de la rúbrica (`#rubricForm`, oculto por
+defecto — ver la nota sobre `[hidden]` en
+[css/styles.md](../css/styles.md)): un `<select>` de jugadora
+("Grupal" si no aplica a una en particular), fecha, observaciones
+libres, y el botón "Eliminar" de cada fila del historial (delegado,
+igual que `renderDashboardTimeline`, con el mismo patrón de doble
+click armado). El contenido de `#rubricCriteria` en sí —los 5
+`<select>` 1-5 con su descripción— **no** se arma acá, porque depende
+de la posición activa: eso lo hace `renderRubricCriteria()`,
+reconstruyéndolo cada vez que `renderEntrenamiento()` corre (o sea,
+cada vez que se cambia de solapa de posición). Al guardar, se lee
+`RUBRIC_DIMENSIONS` (no la posición) para juntar los puntajes —
+`state.trainingLogs.push(...)` — nunca toca `state.players`.
+
+### `renderEntrenamiento()` / `renderTrainingLog()`
+
+`renderEntrenamiento()` marca qué solapa de posición está activa,
+vuelca `TRAINING_SUGGESTIONS[currentTrainingPosition]` como listas por
+categoría, llama a `renderRubricCriteria()` para refrescar el
+formulario con las descripciones de esa posición, y delega en
+`renderTrainingLog()` para la lista de `state.trainingLogs`, más
+reciente primero (par `{entry, idx}` armado antes de ordenar, para
+poder borrar por el índice **original** del array aunque la lista se
+muestre en otro orden — mismo truco que `renderDashboardTimeline`).
+Cada fila del historial usa `rubricLabel(entry.position, dimensión)`
+—la posición **guardada en esa entrada**, no la solapa activa ahora—
+para que un registro viejo siga mostrando las descripciones correctas
+aunque el DT esté mirando otra posición en ese momento.
+
+## Dependencias externas
+
+| Dependencia | Uso |
+|---|---|
+| [Chart.js](https://www.chartjs.org/) (CDN, cargado en `index.html`) | Dibuja el radar chart de atributos |
+| `localStorage` (API del navegador) | Persistencia local del estado completo |
+| `window.SheetsSync` (de [js/sheets-integration.js](sheets-integration.md)) | Sincronización en segundo plano con Google Sheets |
+| SVG + Pointer Events (APIs del navegador) | Campo visual, arrastrar-y-soltar y sugerencias por hover |
+
+Ver también [GLOSSARY.md](../GLOSSARY.md).
