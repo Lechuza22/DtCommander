@@ -9,7 +9,10 @@ JavaScript busca por `document.getElementById` / `querySelectorAll`.
 
 ```mermaid
 flowchart TD
-    Header["header (#syncStatus)"] --> SheetsIntegration["js/sheets-integration.js: setStatus()"]
+    LoginGate["#loginGate / #appRoot"] --> AuthJS["js/auth.js"]
+
+    Header["header (#syncStatus, #logoutBtn)"] --> SheetsIntegration["js/sheets-integration.js: setStatus()"]
+    Header --> AuthJS
 
     TabsNav[".tab-btn (Evaluador / Jugadora / Formación / Entrenamiento)"] --> AppTabs["js/app.js: setupTabs()"]
 
@@ -45,6 +48,12 @@ flowchart TD
 
 ## Notas de estructura
 
+- **`#loginGate`** / **`#appRoot`**: son dos contenedores hermanos, no
+  anidados. `#appRoot` arranca con `hidden` puesto directamente en el
+  HTML (no por JS) para que no haya un instante de "flash" de la app
+  antes de que [js/auth.js](js/auth.md) decida si mostrarla. Todo lo
+  que describe el resto de este documento (header, tabs, las cuatro
+  pestañas) vive **dentro** de `#appRoot`.
 - **`#syncStatus`**: un punto (`●`) en el header cuyo color y `title`
   controla por completo [js/sheets-integration.js](js/sheets-integration.md)
   — el HTML solo define el estado inicial (`sync-local`).
@@ -87,15 +96,18 @@ flowchart TD
   `[hidden] { display: none !important; }` cerca del principio — sin
   ella, los formularios de arriba quedaban siempre visibles aunque el
   atributo `hidden` estuviera bien puesto (bug real que hubo en la app).
-- Carga tres `<script>` al final del `<body>`, en este orden: Chart.js
-  (CDN), `sheets-integration.js`, `app.js` — el orden importa porque
-  `app.js` usa `window.SheetsSync` y `Chart` al arrancar.
+- Carga cuatro `<script>` al final del `<body>`, en este orden:
+  `auth.js`, Chart.js (CDN), `sheets-integration.js`, `app.js`.
+  `auth.js` va primero porque decide si el resto siquiera se ve; el
+  resto del orden importa porque `app.js` usa `window.SheetsSync` y
+  `Chart` al arrancar.
 
 ## Dependencias externas
 
 | Dependencia | Uso |
 |---|---|
 | [css/styles.css](css/styles.md) | Todo el estilo visual |
+| [js/auth.md](js/auth.md) | Pantalla de login (disuasoria, no real) |
 | [Chart.js](https://www.chartjs.org/) (CDN `jsdelivr`) | Radar chart de atributos |
 | [js/sheets-integration.js](js/sheets-integration.md) | Sync con Google Sheets |
 | [js/app.js](js/app.md) | Toda la lógica de la app |
