@@ -77,7 +77,7 @@ flowchart TD
 ## Configuración editable (constantes)
 
 - **`ATTRIBUTES`** — array con los once atributos evaluables (se guardan
-  de 1 a 10, pasos de 0,5; se muestran ×10, ver `SCORE_SCALE`). Agregar o sacar uno acá actualiza automáticamente
+  de 0,1 a 10 en pasos de 0,1; se muestran ×10, ver `SCORE_SCALE`). Agregar o sacar uno acá actualiza automáticamente
   sliders, radar chart y CSV; hay que replicarlo a mano en
   [data/google-apps-script.js](../data/google-apps-script.md).
 - **`POSITIONS`** — catálogo de puestos (`Arquera`, `Defensa`,
@@ -122,9 +122,11 @@ número que **ya** está en escala 1-100 (entero, o un decimal con coma:
 usan sliders, lista de atributos, diferencias y promedios. La regla para
 no convertir dos veces: todo lo que se calcula sobre datos (promedios,
 `colorForAttrValue`, cortes de color) trabaja con el valor guardado, y
-la conversión se hace recién al dibujar. Los sliders siguen siendo de
-1 a 10 en pasos de 0,5 —lo que en pantalla son saltos de 5 puntos—; el
-número que se ve al lado es solo la etiqueta. Los gráficos de radar y de
+la conversión se hace recién al dibujar. Los sliders trabajan con el
+valor guardado (de 0,1 a 10) pero con paso `1 / SCORE_SCALE` = 0,1, o
+sea saltos de 1 punto en la escala que se ve (1, 2, 3…) y mínimo 1; el
+número que se ve al lado es solo la etiqueta. Un valor guardado antes
+con pasos de 0,5 (como 4,5) carga exacto, sin que el slider lo ajuste. Los gráficos de radar y de
 tendencia pasan los datos por `toScore` y tienen eje hasta
 `10 * SCORE_SCALE`. El export a CSV sale en la escala 1-100 (la que se
 ve en la app), no en la guardada.
