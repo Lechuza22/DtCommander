@@ -234,6 +234,24 @@ ese preflight.
 `Content-Type: text/plain` en vez de `application/json`: evita que el
 navegador dispare el preflight que Apps Script no sabe manejar.
 
+### autenticación real vs. "cortina" (client-side gate)
+
+Una autenticación real valida las credenciales en un servidor que el
+visitante no controla, así que negarle el acceso a alguien sin la clave
+correcta es efectivo. Una "cortina" del lado del cliente (todo el
+chequeo corriendo en JavaScript dentro del navegador de quien visita la
+página) no puede lograr eso: el código que decide si dejar pasar o no
+se manda igual a todo el mundo, así que alguien con ganas de mirar el
+código fuente puede leer la contraseña o saltear el chequeo
+directamente. Sirve como filtro contra quien llega de casualidad, no
+contra quien busca entrar a propósito.
+
+**En este proyecto:** DTCommander no tiene servidor propio (ver
+[Web App (Google Apps Script)](#web-app-google-apps-script) más abajo),
+así que [js/auth.js](js/auth.md) es necesariamente de este segundo tipo
+— el email y la contraseña están en texto plano en ese archivo a
+propósito, porque esconderlos no cambiaría nada real.
+
 ### Web App (Google Apps Script)
 
 Una forma de desplegar un script de Google Apps Script como si fuera un
