@@ -691,9 +691,11 @@ function renderEvaluador() {
   updateRadarChart();
 }
 
-// Compartido entre el radar de Evaluador y el de la pestaña Jugadora.
+// Compartido entre los radares de Evaluador, de la pestaña Jugadora y el
+// chiquito de Formación (compact: etiquetas de 3 letras, sin números en los
+// anillos y sin animación, para que acompañe al mouse sin demora).
 // Recibe los valores guardados (1-10) y los dibuja en escala 1-100.
-function buildOrUpdateRadar(existingChart, canvasId, label, data) {
+function buildOrUpdateRadar(existingChart, canvasId, label, data, compact = false) {
   const ctx = document.getElementById(canvasId);
   if (!ctx || typeof Chart === 'undefined') return existingChart;
   const scaled = data.map(toScore);
@@ -703,6 +705,19 @@ function buildOrUpdateRadar(existingChart, canvasId, label, data) {
     existingChart.data.datasets[0].label = label;
     existingChart.update();
     return existingChart;
+  }
+
+  const scale = { min: 0, max: 10 * SCORE_SCALE, ticks: { stepSize: 2 * SCORE_SCALE } };
+  const options = {
+    scales: { r: scale },
+    plugins: { legend: { display: false } }
+  };
+  if (compact) {
+    scale.ticks.display = false;
+    scale.pointLabels = { font: { size: 9 }, callback: text => text.slice(0, 3) };
+    options.responsive = true;
+    options.maintainAspectRatio = false;
+    options.animation = false;
   }
 
   return new Chart(ctx, {
@@ -717,10 +732,7 @@ function buildOrUpdateRadar(existingChart, canvasId, label, data) {
         pointBackgroundColor: '#185FA5'
       }]
     },
-    options: {
-      scales: { r: { min: 0, max: 10 * SCORE_SCALE, ticks: { stepSize: 2 * SCORE_SCALE } } },
-      plugins: { legend: { display: false } }
-    }
+    options
   });
 }
 
@@ -1187,8 +1199,11 @@ function createFieldToken(name, x, y) {
   return g;
 }
 
-// Muestra, debajo de "Disponibles", las jugadoras sin ubicar que comparten
-// posición (principal o secundaria) con la que se está mirando en la cancha.
+let suggestionsRadarChart = null;
+
+// Muestra, debajo de "Disponibles", el perfil (gráfico de estrella) de la
+// jugadora que se está mirando en la cancha y las jugadoras sin ubicar que
+// comparten posición (principal o secundaria) con ella.
 function showSuggestions(name) {
   const player = state.players[name];
   const box = document.getElementById('suggestions');
@@ -1218,7 +1233,12 @@ function showSuggestions(name) {
       });
     }
   }
+  // Primero se muestra el panel y recién después se dibuja el radar: un
+  // <canvas> dentro de algo con display:none mide 0x0 y el gráfico queda mal.
   box.hidden = false;
+  suggestionsRadarChart = buildOrUpdateRadar(
+    suggestionsRadarChart, 'suggestionsRadar', name, ATTRIBUTES.map(a => player.attrs[a]), true
+  );
 }
 
 function hideSuggestions() {
