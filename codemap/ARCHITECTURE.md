@@ -1,0 +1,67 @@
+# Arquitectura — DTCommander
+
+DTCommander es una app web estática (sin build, sin backend propio) para
+que un DT de fútbol femenino (fútbol 8) evalúe jugadoras por atributos,
+siga su progreso en el tiempo (pestaña Jugadora), arme/mueva la
+formación del equipo en un campo visual (con un historial de partidos,
+cada uno con hasta 3 planes/tableros independientes), y planifique
+entrenamientos con una rúbrica de evaluación manual — todo sincronizado
+automáticamente contra una Google Sheet.
+
+## Diagrama de módulos
+
+```mermaid
+graph LR
+    HTML["index.html"] --> CSS["css/styles.css"]
+    HTML --> ChartJS["Chart.js (CDN)"]
+    HTML --> SheetsJS["js/sheets-integration.js"]
+    HTML --> AppJS["js/app.js"]
+
+    AppJS -->|"render radar"| ChartJS
+    AppJS -->|"leer/escribir"| LocalStorage["localStorage"]
+    AppJS -->|"hydrate() / scheduleSync()"| SheetsJS
+
+    SheetsJS -->|"fetch GET/POST"| WebApp["Google Apps Script (Web App)"]
+    WebApp -->|"lee/escribe"| Sheet["Google Sheet del usuario"]
+
+    GAS["data/google-apps-script.js"] -.->|"se pega manualmente y se despliega como"| WebApp
+```
+
+`data/google-apps-script.js` no se sirve junto al resto de la app: es
+código fuente que el usuario copia a mano en el editor de Apps Script de
+su propia Sheet (ver [SETUP.md](../SETUP.md)) y despliega como "Web App".
+Una vez desplegado, esa URL es la única conexión entre el navegador y
+Google — no hay ningún servidor intermedio propio.
+
+## Flujo típico de una sesión
+
+1. Se abre `index.html`. `js/app.js` carga el estado desde `localStorage`
+   (o crea el estado por defecto con Ine y Agos si es la primera vez).
+2. En paralelo, le pide a `js/sheets-integration.js` (`hydrate()`) los
+   datos remotos. Si la Sheet responde, esos datos reemplazan al estado
+   local; si no (sin configurar, sin red), sigue con lo local.
+3. El usuario evalúa jugadoras (pestaña Evaluador, moviendo sliders — eso
+   actualiza el valor "actual" pero no queda en el historial hasta que se
+   aprieta "Guardar evaluación"), consulta su progreso (pestaña Jugadora,
+   de solo lectura), arma la cancha (pestaña Formación: elige un
+   partido del historial, un Plan A/B/C dentro de ese partido, y una
+   forma táctica dentro de ese plan, y arrastra jugadoras), o registra
+   una rúbrica de entrenamiento por posición (pestaña Entrenamiento —
+   queda como historial de referencia, no modifica atributos). Cada
+   cambio llama a `saveState()`.
+4. `saveState()` escribe siempre en `localStorage` al instante, y avisa a
+   `sheets-integration.js` (`scheduleSync()`), que manda el estado
+   completo a la Sheet 800ms después del último cambio (debounced).
+5. Un indicador en el header (`#syncStatus`) refleja en todo momento si
+   se está sincronizado, sincronizando, sin conexión, o sin Sheets
+   configurado todavía.
+
+## Índice de módulos
+
+- [index.md](index.md) — estructura HTML
+- [css/styles.md](css/styles.md) — estilos
+- [js/app.md](js/app.md) — estado, Evaluador, Jugadora, Formación (drag & drop), Entrenamiento
+- [js/sheets-integration.md](js/sheets-integration.md) — sync automática con Sheets
+- [data/google-apps-script.md](data/google-apps-script.md) — backend en Apps Script
+
+Ver también [GLOSSARY.md](GLOSSARY.md).
