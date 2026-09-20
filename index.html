@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DTCommander</title>
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <header>
+    <h1>⚽ DTCommander</h1>
+    <span id="syncStatus" class="sync-status sync-local" title="Iniciando…">●</span>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="panel-evaluador">Evaluador</button>
+    <button class="tab-btn" data-tab="panel-jugadora">Jugadora</button>
+    <button class="tab-btn" data-tab="panel-formacion">Formación</button>
+    <button class="tab-btn" data-tab="panel-entrenamiento">Entrenamiento</button>
+  </nav>
+
+  <main class="container">
+
+    <!-- ===== EVALUADOR ===== -->
+    <section id="panel-evaluador" class="tab-panel active">
+      <div class="card">
+        <div class="roster-controls">
+          <select id="playerSelect"></select>
+          <button id="addPlayerBtn" class="btn">+ Jugadora</button>
+          <button id="removePlayerBtn" class="btn btn-danger">Eliminar</button>
+        </div>
+        <div id="addPlayerForm" class="add-player-form" hidden>
+          <input type="text" id="newPlayerName" placeholder="Nombre de la jugadora" maxlength="40">
+          <button id="confirmAddPlayerBtn" class="btn">Agregar</button>
+          <button id="cancelAddPlayerBtn" class="btn btn-secondary">Cancelar</button>
+          <span id="addPlayerError" class="form-error"></span>
+        </div>
+      </div>
+
+      <div id="evaluadorEmpty" class="card" style="display:none;">
+        <p>No hay jugadoras cargadas. Agregá una con "+ Jugadora".</p>
+      </div>
+
+      <div id="evaluadorContent">
+        <div class="card">
+          <h2>Posición</h2>
+          <div class="position-controls">
+            <label>Principal
+              <select id="posPrincipal"></select>
+            </label>
+            <label>Secundaria
+              <select id="posSecundaria"></select>
+            </label>
+          </div>
+        </div>
+
+        <div class="attrs-chart-layout">
+          <div class="card">
+            <h2>Atributos</h2>
+            <div id="slidersContainer"></div>
+          </div>
+
+          <div class="card">
+            <h2>Perfil</h2>
+            <canvas id="radarChart" width="320" height="320"></canvas>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="roster-controls">
+            <button id="saveEvalBtn" class="btn">Guardar evaluación</button>
+            <button id="exportCsvBtn" class="btn btn-secondary">Exportar CSV</button>
+          </div>
+          <div id="saveEvalForm" class="add-player-form" hidden>
+            <input type="text" id="evalLabel" placeholder="Etiqueta (ej: vs Boca, Entrenamiento martes)" maxlength="60">
+            <input type="date" id="evalDate">
+            <button id="confirmSaveEvalBtn" class="btn">Guardar</button>
+            <button id="cancelSaveEvalBtn" class="btn btn-secondary">Cancelar</button>
+          </div>
+          <p class="hint">Esto guarda un punto en el historial de la jugadora (pestaña "Jugadora") para ver su progreso partido a partido. Mover los sliders solo actualiza el valor actual, no crea un punto nuevo.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== JUGADORA (dashboard estático) ===== -->
+    <section id="panel-jugadora" class="tab-panel">
+      <div class="card">
+        <div class="roster-controls">
+          <select id="dashboardPlayerSelect"></select>
+        </div>
+      </div>
+
+      <div id="dashboardEmpty" class="card" style="display:none;">
+        <p>No hay jugadoras cargadas. Agregá una desde la pestaña Evaluador.</p>
+      </div>
+
+      <div id="dashboardContent">
+        <div class="attrs-chart-layout">
+          <div class="card">
+            <h2>Cambios desde la última evaluación</h2>
+            <div id="dashboardDiff"></div>
+          </div>
+
+          <div class="card">
+            <h2>Perfil actual</h2>
+            <canvas id="dashboardRadarChart" width="320" height="320"></canvas>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Atributos</h2>
+          <div id="dashboardAttrsGrid" class="attrs-grid"></div>
+          <div id="attrColorLegend" class="position-legend"></div>
+        </div>
+
+        <div class="card">
+          <h2>Promedio general en el tiempo</h2>
+          <div class="chart-wrap"><canvas id="dashboardTrendChart"></canvas></div>
+        </div>
+
+        <div class="card">
+          <h2>Historial de evaluaciones</h2>
+          <div id="dashboardTimeline"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== FORMACIÓN ===== -->
+    <section id="panel-formacion" class="tab-panel">
+      <div class="card">
+        <div class="roster-controls">
+          <select id="matchSelect"></select>
+          <button id="addMatchBtn" class="btn">+ Partido</button>
+          <button id="removeMatchBtn" class="btn btn-danger">Eliminar partido</button>
+        </div>
+        <div id="addMatchForm" class="add-player-form" hidden>
+          <input type="text" id="newMatchRival" placeholder="Rival (vs...)" maxlength="40">
+          <input type="date" id="newMatchDate">
+          <button id="confirmAddMatchBtn" class="btn">Agregar</button>
+          <button id="cancelAddMatchBtn" class="btn btn-secondary">Cancelar</button>
+          <span id="addMatchError" class="form-error"></span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="plan-tabs" id="planTabs"></div>
+      </div>
+
+      <div class="card">
+        <div class="formation-controls">
+          <label>Formación
+            <select id="formationSelect"></select>
+          </label>
+          <button id="resetFormationBtn" class="btn">Restablecer a preset</button>
+        </div>
+        <p class="hint">Elegí una formación de base y después arrastrá a cada jugadora para acomodarla como quieras, o elegí "Libre" para armar la cancha desde cero.</p>
+        <div id="positionLegend" class="position-legend"></div>
+      </div>
+
+      <div class="field-layout">
+        <div class="card available-panel">
+          <h2>Disponibles</h2>
+          <div id="availablePlayers" class="available-list"></div>
+          <div id="suggestions" class="suggestions" hidden>
+            <h3>Alternativas para <span id="suggestionsFor"></span></h3>
+            <div id="suggestionsList" class="available-list"></div>
+          </div>
+        </div>
+
+        <div class="card field-panel">
+          <svg id="field" viewBox="0 0 300 400" preserveAspectRatio="xMidYMid meet">
+            <rect x="0" y="0" width="300" height="400" class="field-bg"></rect>
+            <rect x="10" y="10" width="280" height="380" class="field-border"></rect>
+            <line x1="10" y1="200" x2="290" y2="200" class="field-line"></line>
+            <circle cx="150" cy="200" r="40" class="field-line-fill"></circle>
+            <rect x="90" y="10" width="120" height="55" class="field-line-fill"></rect>
+            <rect x="90" y="335" width="120" height="55" class="field-line-fill"></rect>
+          </svg>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== ENTRENAMIENTO ===== -->
+    <section id="panel-entrenamiento" class="tab-panel">
+      <div class="card">
+        <p class="hint">Elegí una posición para ver sugerencias de entrenamiento y completar la rúbrica de evaluación. Completar la rúbrica queda como registro histórico — no modifica los atributos de ninguna jugadora, eso lo seguís haciendo vos a mano en Evaluador.</p>
+        <div class="plan-tabs" id="trainingPositionTabs"></div>
+      </div>
+
+      <div class="card">
+        <h2>Sugerencias para <span id="trainingPositionName"></span></h2>
+        <div id="trainingSuggestions"></div>
+      </div>
+
+      <div class="card">
+        <div class="roster-controls">
+          <button id="openRubricBtn" class="btn">Evaluar entrenamiento</button>
+        </div>
+        <div id="rubricForm" class="rubric-form" hidden>
+          <div class="rubric-row">
+            <label>Jugadora
+              <select id="rubricPlayer"></select>
+            </label>
+            <label>Fecha
+              <input type="date" id="rubricDate">
+            </label>
+          </div>
+          <div class="rubric-criteria" id="rubricCriteria"></div>
+          <label class="rubric-notes-label">Observaciones
+            <textarea id="rubricNotes" rows="2" placeholder="Qué se trabajó, cómo respondió..."></textarea>
+          </label>
+          <div class="roster-controls">
+            <button id="confirmRubricBtn" class="btn">Guardar</button>
+            <button id="cancelRubricBtn" class="btn btn-secondary">Cancelar</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Historial de entrenamientos</h2>
+        <div id="trainingLogList"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <script src="js/sheets-integration.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
