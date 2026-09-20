@@ -231,10 +231,27 @@ function makeEmptyPlayer() {
   };
 }
 
-// Muestra los atributos con coma decimal (5, 5,5, 6…) en vez del punto que usa el <input type="range">
-function formatAttrValue(value) {
-  const n = Number(value);
+// Los atributos se GUARDAN de 1 a 10 (en pasos de 0,5) — así están en la
+// Sheet y así se comparan con el cuestionario de autoevaluación — pero se
+// MUESTRAN de 1 a 100 (×10). Todo lo que se ve en pantalla pasa por acá;
+// lo guardado nunca se convierte.
+const SCORE_SCALE = 10;
+
+// Valor guardado (1-10) -> valor mostrado (1-100), con un decimal como mucho
+// (evita ruidos de coma flotante tipo 73.00000000000001 en promedios).
+function toScore(raw) {
+  return Math.round(Number(raw) * SCORE_SCALE * 10) / 10;
+}
+
+// Ya en escala 1-100: entero si se puede, si no un decimal con coma (52,7).
+function formatScore(score) {
+  const n = Number(score);
   return Number.isInteger(n) ? String(n) : n.toFixed(1).replace('.', ',');
+}
+
+// Recibe el valor guardado (1-10) y lo muestra en escala 1-100.
+function formatAttrValue(raw) {
+  return formatScore(toScore(raw));
 }
 
 function todayISO() {
@@ -257,10 +274,11 @@ function average(attrs) {
   return ATTRIBUTES.reduce((sum, a) => sum + (attrs[a] || 0), 0) / ATTRIBUTES.length;
 }
 
-// Escala de "temperatura" para el gráfico de barras de atributos:
-// 0-2 rojo, 3-4 naranja, 5-6 amarillo, 7 verde claro, 8-8.5+ verde
-// oscuro, 9-10 celeste. Nada que ver con colorForPosition (esa es por
-// puesto, esta es por valor del atributo).
+// Escala de "temperatura" de los atributos. Los cortes están en el valor
+// GUARDADO (1-10); en la escala que se ve (1-100) son: 0-29 rojo, 30-49
+// naranja, 50-69 amarillo, 70-79 verde claro, 80-89 verde oscuro, 90-100
+// celeste. Nada que ver con colorForPosition (esa es por puesto, esta es
+// por valor del atributo).
 const ATTR_VALUE_COLORS = [
   { min: 9, color: '#38bdf8' },  // celeste
   { min: 8, color: '#15803d' },  // verde oscuro
@@ -626,7 +644,7 @@ function setupEvaluador() {
     row.innerHTML = `
       <span class="slider-label">${attr}</span>
       <input type="range" min="1" max="10" step="0.5" value="5" data-attr="${attr}">
-      <span class="slider-value">5</span>
+      <span class="slider-value">50</span>
     `;
     slidersContainer.appendChild(row);
     const input = row.querySelector('input');
@@ -671,12 +689,14 @@ function renderEvaluador() {
 }
 
 // Compartido entre el radar de Evaluador y el de la pestaña Jugadora.
+// Recibe los valores guardados (1-10) y los dibuja en escala 1-100.
 function buildOrUpdateRadar(existingChart, canvasId, label, data) {
   const ctx = document.getElementById(canvasId);
   if (!ctx || typeof Chart === 'undefined') return existingChart;
+  const scaled = data.map(toScore);
 
   if (existingChart) {
-    existingChart.data.datasets[0].data = data;
+    existingChart.data.datasets[0].data = scaled;
     existingChart.data.datasets[0].label = label;
     existingChart.update();
     return existingChart;
@@ -688,14 +708,14 @@ function buildOrUpdateRadar(existingChart, canvasId, label, data) {
       labels: ATTRIBUTES,
       datasets: [{
         label,
-        data,
+        data: scaled,
         backgroundColor: 'rgba(24, 95, 165, 0.25)',
         borderColor: '#185FA5',
         pointBackgroundColor: '#185FA5'
       }]
     },
     options: {
-      scales: { r: { min: 0, max: 10, ticks: { stepSize: 2 } } },
+      scales: { r: { min: 0, max: 10 * SCORE_SCALE, ticks: { stepSize: 2 * SCORE_SCALE } } },
       plugins: { legend: { display: false } }
     }
   });
@@ -714,7 +734,7 @@ function exportCsv() {
     rows.push([
       name, p.apodo || '', p.edad || '', p.altura || '', p.pieDominante || '',
       p.posPrincipal || '', p.posSecundaria || '',
-      ...ATTRIBUTES.map(a => p.attrs[a])
+      ...ATTRIBUTES.map(a => toScore(p.attrs[a])) // en la escala 1-100 que se ve en la app
     ]);
   });
   const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
@@ -818,18 +838,18 @@ function renderDashboardPlayerInfo(player) {
     </div>`).join('');
 }
 
-// Se arma una sola vez: qué significa cada color de las barras.
+// Se arma una sola vez: qué significa cada color, en la escala 1-100 que
+// se ve. Los rangos salen de ATTR_VALUE_COLORS (de mayor a menor piso), así
+// que si se cambia un corte allá la leyenda se actualiza sola.
 function renderAttrColorLegend() {
   const el = document.getElementById('attrColorLegend');
   if (!el) return;
-  const bands = [
-    { label: '0-2', color: '#dc2626' },
-    { label: '3-4', color: '#f97316' },
-    { label: '5-6', color: '#eab308' },
-    { label: '7', color: '#4ade80' },
-    { label: '8', color: '#15803d' },
-    { label: '9-10', color: '#38bdf8' }
-  ];
+  const top = 10 * SCORE_SCALE;
+  const bands = ATTR_VALUE_COLORS.map((band, i) => {
+    const from = band.min === -Infinity ? 0 : band.min * SCORE_SCALE;
+    const to = i === 0 ? top : ATTR_VALUE_COLORS[i - 1].min * SCORE_SCALE - 1;
+    return { label: `${from}-${to}`, color: band.color };
+  }).reverse();
   el.innerHTML = bands.map(b =>
     `<span class="legend-item"><span class="legend-dot" style="background:${b.color}"></span>${b.label}</span>`
   ).join('');
@@ -885,9 +905,9 @@ function updateDashboardTrend(player, history) {
   if (!ctx || typeof Chart === 'undefined') return;
 
   const labels = history.map(h => h.label || formatDateDisplay(h.date));
-  const data = history.map(h => Math.round(average(h.attrs) * 10) / 10);
+  const data = history.map(h => toScore(average(h.attrs)));
   labels.push('Actual');
-  data.push(Math.round(average(player.attrs) * 10) / 10);
+  data.push(toScore(average(player.attrs)));
 
   if (dashboardTrendChart) {
     dashboardTrendChart.data.labels = labels;
@@ -913,7 +933,7 @@ function updateDashboardTrend(player, history) {
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      scales: { y: { min: 0, max: 10 } },
+      scales: { y: { min: 0, max: 10 * SCORE_SCALE } },
       plugins: { legend: { display: false } }
     }
   });
@@ -930,11 +950,13 @@ function renderDashboardTimeline(history) {
   const rows = history.map((entry, idx) => {
     const prev = idx > 0 ? history[idx - 1] : null;
     const avg = average(entry.attrs);
-    const avgDiff = prev ? Math.round((avg - average(prev.attrs)) * 10) / 10 : null;
+    // La diferencia se calcula ya en escala 1-100 (con un decimal), no sobre
+    // los valores guardados redondeados: si no, +2,7 puntos se vería como +3.
+    const avgDiff = prev ? Math.round((toScore(avg) - toScore(average(prev.attrs))) * 10) / 10 : null;
     const cls = avgDiff > 0 ? 'diff-up' : avgDiff < 0 ? 'diff-down' : 'diff-same';
     const diffText = avgDiff === null || avgDiff === 0
       ? ''
-      : `<span class="diff-delta ${cls}">(${avgDiff > 0 ? '+' : ''}${formatAttrValue(avgDiff)})</span>`;
+      : `<span class="diff-delta ${cls}">(${avgDiff > 0 ? '+' : ''}${formatScore(avgDiff)})</span>`;
     return { idx, avg, diffText, entry };
   }).reverse().map(({ idx, avg, diffText, entry }) => `
     <div class="timeline-row">
