@@ -76,8 +76,8 @@ flowchart TD
 
 ## Configuración editable (constantes)
 
-- **`ATTRIBUTES`** — array con los once atributos evaluables (sliders de
-  1 a 10, pasos de 0,5). Agregar o sacar uno acá actualiza automáticamente
+- **`ATTRIBUTES`** — array con los once atributos evaluables (se guardan
+  de 1 a 10, pasos de 0,5; se muestran ×10, ver `SCORE_SCALE`). Agregar o sacar uno acá actualiza automáticamente
   sliders, radar chart y CSV; hay que replicarlo a mano en
   [data/google-apps-script.js](../data/google-apps-script.md).
 - **`POSITIONS`** — catálogo de puestos (`Arquera`, `Defensa`,
@@ -107,9 +107,27 @@ usan tanto `defaultState()` como el alta manual con "+ Jugadora", para
 que la forma del objeto viva en un solo lugar. Como las jugadoras que
 vienen de la Sheet pueden no traer los campos nuevos (datos cargados
 antes de que existieran), todo el código que los lee usa `|| ''` en
-vez de asumir que están. `formatAttrValue()` muestra un atributo con
-coma decimal (`7,5`) en vez del punto que usa nativamente el
-`<input type="range">`.
+vez de asumir que están.
+
+### `SCORE_SCALE` / `toScore(raw)` / `formatScore(score)` / `formatAttrValue(raw)`
+
+Los atributos se **guardan** de 1 a 10 (así están en `localStorage`, en
+el `POST` y en la Sheet, y así son comparables con el cuestionario de
+autoevaluación) pero se **muestran** de 1 a 100: `SCORE_SCALE = 10` es
+el único lugar donde vive esa conversión. `toScore(raw)` multiplica y
+redondea a un decimal (evita ruido de coma flotante tipo
+`73.00000000000001` en los promedios); `formatScore(score)` formatea un
+número que **ya** está en escala 1-100 (entero, o un decimal con coma:
+`52,7`); `formatAttrValue(raw)` es `formatScore(toScore(raw))` y es lo que
+usan sliders, lista de atributos, diferencias y promedios. La regla para
+no convertir dos veces: todo lo que se calcula sobre datos (promedios,
+`colorForAttrValue`, cortes de color) trabaja con el valor guardado, y
+la conversión se hace recién al dibujar. Los sliders siguen siendo de
+1 a 10 en pasos de 0,5 —lo que en pantalla son saltos de 5 puntos—; el
+número que se ve al lado es solo la etiqueta. Los gráficos de radar y de
+tendencia pasan los datos por `toScore` y tienen eje hasta
+`10 * SCORE_SCALE`. El export a CSV sale en la escala 1-100 (la que se
+ve en la app), no en la guardada.
 
 `PIE_DOMINANTE_OPTIONS` (`Derecho` / `Izquierdo` / `Ambos`) es el
 catálogo del select de pie dominante, mismo patrón que `POSITIONS`.
@@ -293,8 +311,12 @@ Una lista vertical (nombre completo + número grande, estilo tarjeta de
 FIFA) con los once atributos, coloreada por **rango de valor** — no por
 posición (eso es `colorForPosition`, otra escala, para otro propósito).
 `colorForAttrValue` busca en `ATTR_VALUE_COLORS` (ordenado de mayor a
-menor `min`) la primera banda cuyo piso sea ≤ al valor: 0-2 rojo, 3-4
-naranja, 5-6 amarillo, 7 verde claro, 8+ verde oscuro, 9-10 celeste. El
+menor `min`) la primera banda cuyo piso sea ≤ al valor **guardado**
+(1-10); en la escala que se ve (1-100) las bandas son: 0-29 rojo, 30-49
+naranja, 50-69 amarillo, 70-79 verde claro, 80-89 verde oscuro, 90-100
+celeste. `renderAttrColorLegend()` arma esos rangos a partir de
+`ATTR_VALUE_COLORS` (multiplicando los pisos por `SCORE_SCALE`), así que
+cambiar un corte actualiza la leyenda sola. El
 color se aplica tanto al número (`.attr-row-value`) como al borde
 izquierdo de la fila (`.attr-row`), igual que los chips de jugadora en
 Formación usan su color de posición. `renderDashboardAttrsGrid` arma el
