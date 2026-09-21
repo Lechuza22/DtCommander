@@ -4,7 +4,9 @@ DTCommander es una app web estática (sin build, sin backend propio) para
 que un DT de fútbol femenino (fútbol 8) evalúe jugadoras por atributos,
 siga su progreso en el tiempo (pestaña Jugadora), arme/mueva la
 formación del equipo en un campo visual (con un historial de partidos,
-cada uno con hasta 3 planes/tableros independientes), y planifique
+cada uno con hasta 3 planes/tableros independientes), dibuje jugadas en
+un tablero táctico libre (flechas, lápiz, texto; se guardan con nombre y
+se exportan como imagen), y planifique
 entrenamientos con una rúbrica de evaluación manual — todo sincronizado
 automáticamente contra una Google Sheet.
 
@@ -17,12 +19,14 @@ graph LR
     HTML --> ChartJS["Chart.js (CDN)"]
     HTML --> SheetsJS["js/sheets-integration.js"]
     HTML --> AppJS["js/app.js"]
+    HTML --> TacticaJS["js/tactica.js"]
 
     AuthJS -->|"tapa/destapa #appRoot"| LocalStorage["localStorage"]
 
     AppJS -->|"render radar"| ChartJS
     AppJS -->|"leer/escribir"| LocalStorage["localStorage"]
     AppJS -->|"hydrate() / scheduleSync()"| SheetsJS
+    TacticaJS -->|"usa state y saveState()"| AppJS
 
     SheetsJS -->|"fetch GET/POST"| WebApp["Google Apps Script (Web App)"]
     WebApp -->|"lee/escribe"| Sheet["Google Sheet del usuario"]
@@ -53,7 +57,9 @@ Google — no hay ningún servidor intermedio propio.
    aprieta "Guardar evaluación"), consulta su progreso (pestaña Jugadora,
    de solo lectura), arma la cancha (pestaña Formación: elige un
    partido del historial, un Plan A/B/C dentro de ese partido, y una
-   forma táctica dentro de ese plan, y arrastra jugadoras), o registra
+   forma táctica dentro de ese plan, y arrastra jugadoras), dibuja una
+   jugada en el tablero de la pestaña Táctica (se guarda con nombre y se
+   puede exportar como imagen), o registra
    una rúbrica de entrenamiento por posición (pestaña Entrenamiento —
    queda como historial de referencia, no modifica atributos). Cada
    cambio llama a `saveState()`.
@@ -77,6 +83,7 @@ Google — no hay ningún servidor intermedio propio.
 - [css/styles.md](css/styles.md) — estilos
 - [js/auth.md](js/auth.md) — pantalla de login (disuasoria, no real)
 - [js/app.md](js/app.md) — estado, Evaluador, Jugadora, Formación (drag & drop), Entrenamiento
+- [js/tactica.md](js/tactica.md) — pestaña Táctica: tablero libre (jugadoras, rivales, flechas, lápiz, texto), historial de tácticas y exportar imagen
 - [js/sheets-integration.md](js/sheets-integration.md) — sync automática con Sheets
 - [data/google-apps-script.md](data/google-apps-script.md) — backend en Apps Script
 
