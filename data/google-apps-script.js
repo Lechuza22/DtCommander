@@ -30,6 +30,7 @@ const SHEET_HISTORIAL = 'Historial';
 const SHEET_PARTIDOS = 'Partidos';
 const SHEET_FORMACION = 'Formacion';
 const SHEET_ENTRENAMIENTOS = 'Entrenamientos';
+const SHEET_TACTICAS = 'Tacticas';
 const SHEET_META = 'Meta';
 
 function doGet(e) {
@@ -37,8 +38,9 @@ function doGet(e) {
   attachHistory_(players);
   const matches = readMatches_();
   const trainingLogs = readTrainingLogs_();
+  const tactics = readTactics_();
   const activeMatch = readMeta_('activeMatch') || '';
-  return jsonResponse_({ players, matches, trainingLogs, activeMatch });
+  return jsonResponse_({ players, matches, trainingLogs, tactics, activeMatch });
 }
 
 function doPost(e) {
@@ -47,6 +49,9 @@ function doPost(e) {
   writeHistory_(body.players || {});
   writeMatches_(body.matches || {});
   writeTrainingLogs_(body.trainingLogs || []);
+  // Solo si el cliente las manda: una versión vieja de la app no las conoce y
+  // no debe borrar las tácticas que ya están en la Sheet.
+  if (Array.isArray(body.tactics)) writeTactics_(body.tactics);
   writeMeta_('activeMatch', body.activeMatch || '');
   return jsonResponse_({ ok: true });
 }
@@ -195,6 +200,74 @@ function writeTrainingLogs_(logs) {
     const range = sheet.getRange(2, 1, rows.length, rows[0].length);
     range.setNumberFormat('@'); // evita que Sheets confunda fechas/posiciones con otros tipos
     range.setValues(rows);
+  }
+}
+
+// ---- Tácticas (tablero de la solapa Táctica) ----
+// Una fila por táctica: Id, Nombre, Creada, Actualizada, Eliminada y después
+// el dibujo (los "items") en formato JSON. Una celda de Sheets aguanta hasta
+// 50.000 caracteres, así que si el dibujo es muy grande se reparte en varias
+// columnas (Datos, Datos2, ...) y al leer se vuelven a unir.
+// Eliminar es "blando": la fila queda con Eliminada = "si" y sin dibujo, para
+// que una copia vieja de la app no la haga reaparecer.
+const TACTICAS_FIXED_HEADERS = ['Id', 'Nombre', 'Creada', 'Actualizada', 'Eliminada'];
+const TACTICAS_CHUNK = 40000;
+
+function asText_(value) {
+  if (value instanceof Date) return value.toISOString();
+  return value === null || value === undefined ? '' : String(value);
+}
+
+function readTactics_() {
+  const sheet = getOrCreateSheet_(SHEET_TACTICAS, TACTICAS_FIXED_HEADERS.concat(['Datos']));
+  const rows = sheet.getDataRange().getValues();
+  const tactics = [];
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    if (!row[0]) continue;
+    let items = [];
+    try {
+      items = JSON.parse(row.slice(TACTICAS_FIXED_HEADERS.length).map(asText_).join('') || '[]');
+    } catch (err) {
+      items = [];
+    }
+    tactics.push({
+      id: asText_(row[0]),
+      name: asText_(row[1]),
+      createdAt: asText_(row[2]),
+      updatedAt: asText_(row[3]),
+      deleted: asText_(row[4]) === 'si',
+      items: Array.isArray(items) ? items : []
+    });
+  }
+  return tactics;
+}
+
+function writeTactics_(tactics) {
+  const sheet = getOrCreateSheet_(SHEET_TACTICAS, TACTICAS_FIXED_HEADERS.concat(['Datos']));
+  sheet.clearContents();
+
+  const rows = (tactics || []).map(t => {
+    const json = t.deleted ? '[]' : JSON.stringify(t.items || []);
+    const row = [t.id || '', t.name || '', t.createdAt || '', t.updatedAt || '', t.deleted ? 'si' : ''];
+    for (let start = 0; start < json.length; start += TACTICAS_CHUNK) {
+      row.push(json.slice(start, start + TACTICAS_CHUNK));
+    }
+    return row;
+  });
+
+  const width = rows.reduce((max, r) => Math.max(max, r.length), TACTICAS_FIXED_HEADERS.length + 1);
+  const header = TACTICAS_FIXED_HEADERS.slice();
+  for (let c = TACTICAS_FIXED_HEADERS.length; c < width; c++) {
+    header.push(c === TACTICAS_FIXED_HEADERS.length ? 'Datos' : 'Datos' + (c - TACTICAS_FIXED_HEADERS.length + 1));
+  }
+  sheet.getRange(1, 1, 1, width).setValues([header]);
+
+  if (rows.length) {
+    const padded = rows.map(r => r.concat(new Array(width - r.length).fill('')));
+    const range = sheet.getRange(2, 1, padded.length, width);
+    range.setNumberFormat('@'); // texto plano: evita que Sheets interprete fechas o fórmulas
+    range.setValues(padded);
   }
 }
 
