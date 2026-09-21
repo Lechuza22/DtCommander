@@ -100,6 +100,13 @@
     svgEl('circle', Object.assign({ cx: 150, cy: 200, r: 40 }, line), parent);
     svgEl('rect', Object.assign({ x: 90, y: 10, width: 120, height: 55 }, line), parent);
     svgEl('rect', Object.assign({ x: 90, y: 335, width: 120, height: 55 }, line), parent);
+    // Arcos, en el margen de cada línea de fondo.
+    [[10, 2], [390, 398]].forEach(([y0, y1]) => {
+      svgEl('path', {
+        d: `M122,${y0} L122,${y1} L178,${y1} L178,${y0} Z`, fill: 'rgba(255,255,255,0.2)', stroke: '#ffffff',
+        'stroke-width': 2, 'stroke-linejoin': 'round'
+      }, parent);
+    });
   }
 
   function haloText(parent, text, attrs) {
