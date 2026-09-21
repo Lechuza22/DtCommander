@@ -58,8 +58,14 @@ sea fácil ubicar qué tocar.
   la ficha seleccionada), `.sim-panel` (el panel de fases debajo de la
   cancha), `.phase-tabs` / `.phase-tab` (una pestaña por fase; se desliza de
   costado), `.sim-row`, `.sim-note`, `.sim-dur`, `.sim-caption` (la nota de la
-  fase al reproducir). Con `.sim-playing` en el panel la lista de jugadoras se
-  atenúa y no recibe toques. Ojo con `.field-layout > .card { min-width: 0 }`:
+  fase al reproducir), `.sim-tools` (Mover / Texto / Zona, colores y grilla),
+  `.sim-actions` con `.sim-actrow` y `.sim-actionlist` / `.sim-action` (el panel
+  de acciones de la transición). `.sim-selbar` ocupa siempre el mismo alto (una
+  sola fila que se desliza de costado): si apareciera y desapareciera, el
+  navegador corría el scroll de la página al tocar una ficha. Por eso también
+  `#panel-simulacion { overflow-anchor: none }`. Con `.sim-playing` en el panel la lista de jugadoras, las
+  herramientas, las acciones y la barra de la ficha se atenúan y no reciben
+  toques. Ojo con `.field-layout > .card { min-width: 0 }`:
   sin eso una columna de la grilla no se achica por debajo de su contenido y la
   fila de pestañas de fase (que no se puede comprimir) ensanchaba toda la
   página en celulares.
