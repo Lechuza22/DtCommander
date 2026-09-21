@@ -53,18 +53,21 @@ sea fácil ubicar qué tocar.
   `#field`, y un cursor distinto por herramienta según la clase
   `tool-*` que le pone el JS). Los colores de lo dibujado no están acá:
   van como atributos del SVG (ver [js/tactica.js](../js/tactica.md)).
+- **Arcos**: `.field-goal` (relleno translúcido y borde blanco) es el estilo
+  de los dos arcos de la cancha de Formación; las demás canchas dibujan los
+  suyos con atributos propios (ver [js/simulacion-media.js](../js/simulacion-media.md)).
 - **Simulación**: `#simField` (igual que `#tacticField`), `.sim-start` /
   `.sim-start-row` (la tarjeta "Empezar desde"), `.sim-selbar` (acciones de
   la ficha seleccionada), `.sim-panel` (el panel de fases debajo de la
   cancha), `.phase-tabs` / `.phase-tab` (una pestaña por fase; se desliza de
   costado), `.sim-row`, `.sim-note`, `.sim-dur`, `.sim-caption` (la nota de la
   fase al reproducir), `.sim-tools` (Mover / Texto / Zona, colores y grilla),
-  `.sim-actions` con `.sim-actrow` y `.sim-actionlist` / `.sim-action` (el panel
-  de acciones de la transición). `.sim-selbar` ocupa siempre el mismo alto (una
+  `.phase-tab.after-goal` (pestaña de una fase posterior al gol: atenuada y
+  tachada). `.sim-selbar` ocupa siempre el mismo alto (una
   sola fila que se desliza de costado): si apareciera y desapareciera, el
   navegador corría el scroll de la página al tocar una ficha. Por eso también
   `#panel-simulacion { overflow-anchor: none }`. Con `.sim-playing` en el panel la lista de jugadoras, las
-  herramientas, las acciones y la barra de la ficha se atenúan y no reciben
+  herramientas y la barra de la ficha se atenúan y no reciben
   toques. Ojo con `.field-layout > .card { min-width: 0 }`:
   sin eso una columna de la grilla no se achica por debajo de su contenido y la
   fila de pestañas de fase (que no se puede comprimir) ensanchaba toda la
