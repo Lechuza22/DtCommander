@@ -39,7 +39,18 @@ descarga en compu.
 `THEME.GRID` define los casilleros (3 columnas por 4 filas alineadas con las
 líneas de la cancha), `cellRect` da el rectángulo de cada uno y `cellName` su
 nombre (`A1` a `C4`). `THEME.GOAL_X` y `GOAL_Y` dicen adónde va la pelota en
-un tiro o un gol.
+un tiro (a la boca del arco) o un gol (adentro).
+
+## Los arcos: `GOAL_BOX` / `goalSide` / `goalRect`
+
+`drawPitchSvg` y `drawPitchCanvas` dibujan un arco en cada línea de fondo (una
+caja de 56 x 8 unidades, de x 122 a 178, con relleno translúcido, postes
+blancos y red). `goalSide(x, y)` es la regla del gol y la usan Simulación y
+Secuencia: devuelve `'top'` o `'bottom'` si el punto está entre los postes y
+pasó la línea de fondo (y de 10 o menos, o de 390 o más), y `null` si no. Un
+punto sobre la línea (y = 10) cuenta como adentro; el tiro a la boca queda en
+y = 16, así que no es gol. Táctica y la cancha de Formación dibujan los mismos
+arcos por su cuenta (`tactica.js`, `index.html`).
 
 ## El cuadro de video: `drawVideoFrame`
 
