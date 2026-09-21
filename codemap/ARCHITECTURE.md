@@ -6,8 +6,8 @@ siga su progreso en el tiempo (pestaña Jugadora), arme/mueva la
 formación del equipo en un campo visual (con un historial de partidos,
 cada uno con hasta 3 planes/tableros independientes), dibuje jugadas en
 un tablero táctico libre (flechas, lápiz, texto; se guardan con nombre y
-se exportan como imagen), simule esas jugadas animadas en fases, con acciones sobre una grilla de
-casilleros (avanzar, pase, centro, tiro, gol) y video MP4, o grabe la jugada moviendo las piezas (pestaña Secuencia), y planifique
+se exportan como imagen), simule esas jugadas animadas en fases (con grilla de casilleros, textos,
+zonas y video MP4), o grabe la jugada moviendo las piezas (pestaña Secuencia; en las dos, si la pelota entra a un arco es gol y la jugada termina), y planifique
 entrenamientos con una rúbrica de evaluación manual — todo sincronizado
 automáticamente contra una Google Sheet.
 
