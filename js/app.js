@@ -1447,17 +1447,24 @@ function createFieldToken(name, x, y) {
   g.dataset.player = name;
 
   const player = state.players[name];
+  // Ficha al 80% del tamaño original (r 16): era grande para la cancha. El área de toque (hit) no se achicó.
+  const hit = document.createElementNS(ns, 'circle');
+  hit.setAttribute('r', 16);
+  hit.setAttribute('fill', 'transparent');
+
   const circle = document.createElementNS(ns, 'circle');
-  circle.setAttribute('r', 16);
+  circle.setAttribute('r', 12.8);
   circle.setAttribute('class', 'token-circle');
   circle.style.fill = colorForPosition(player && player.posPrincipal);
+  circle.style.pointerEvents = 'none';
 
   const text = document.createElementNS(ns, 'text');
   text.setAttribute('class', 'token-label');
   text.setAttribute('text-anchor', 'middle');
-  text.setAttribute('dy', 4);
+  text.setAttribute('dy', 3.2);
   text.textContent = name.slice(0, 3);
 
+  g.appendChild(hit);
   g.appendChild(circle);
   g.appendChild(text);
   g.addEventListener('pointerdown', onTokenPointerDown);
