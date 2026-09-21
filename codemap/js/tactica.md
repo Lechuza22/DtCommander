@@ -79,6 +79,11 @@ La cancha y cada elemento se crean como nodos SVG con **atributos propios**
 exportación a imagen serializa el SVG y lo dibuja aparte, donde la hoja de
 estilos de la página ya no existe.
 
+Las fichas (`renderToken`) miden radio 11,2 (`TOKEN_R`), con la letra a 9,6 y el
+nombre a 8,5; antes eran de 14 y resultaban grandes para la cancha. Cada una
+lleva un círculo transparente de radio 14 (`TOKEN_HIT_R`) que recibe los toques:
+la zona para agarrarla es la de siempre, aunque se vea más chica.
+
 `renderItems` dibuja en orden de capas (`DRAW_ORDER`: trazos, flechas,
 jugadoras y rivales, pelota, texto), sin importar el orden en que se
 crearon. Así un dibujo hecho después nunca tapa a una jugadora ni le roba
