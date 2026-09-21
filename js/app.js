@@ -270,8 +270,29 @@ function matchLabel(match) {
   return dateText ? `${rivalText} — ${dateText}` : rivalText;
 }
 
-function average(attrs) {
-  return ATTRIBUTES.reduce((sum, a) => sum + (attrs[a] || 0), 0) / ATTRIBUTES.length;
+// ¿Ataja? (Arquera como posición principal o secundaria). Solo entonces Portería cuenta en su promedio.
+function playsGoalkeeper(player) {
+  return !!player && (player.posPrincipal === 'Arquera' || player.posSecundaria === 'Arquera');
+}
+
+// Promedio de los atributos guardados (1-10). Portería queda afuera para quien no ataja: casi todas
+// tienen 1 o 2 y les bajaba unos 4 puntos (en la escala 1-100) sin decir nada de cómo juegan.
+function average(attrs, player) {
+  const keys = playsGoalkeeper(player) ? ATTRIBUTES : ATTRIBUTES.filter(a => a !== 'Portería');
+  return keys.reduce((sum, a) => sum + (attrs[a] || 0), 0) / keys.length;
+}
+
+// Color de texto (blanco u oscuro) con más contraste sobre un fondo #rrggbb.
+function readableTextColor(hex) {
+  const lum = c => {
+    const v = parseInt(c, 16) / 255;
+    return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+  };
+  const L = 0.2126 * lum(hex.slice(1, 3)) + 0.7152 * lum(hex.slice(3, 5)) + 0.0722 * lum(hex.slice(5, 7));
+  const dark = '#111827'; // luminancia 0,0095
+  const contrastWhite = 1.05 / (L + 0.05);
+  const contrastDark = (L + 0.05) / 0.0595;
+  return contrastWhite >= contrastDark ? '#ffffff' : dark;
 }
 
 // Escala de "temperatura" de los atributos. Los cortes están en el valor
@@ -1015,7 +1036,7 @@ function renderDashboard() {
 
   renderDashboardDiff(player, history);
   updateDashboardTrend(player, history);
-  renderDashboardTimeline(history);
+  renderDashboardTimeline(history, player);
 }
 
 // El apodo es texto libre (y la Sheet es editable desde afuera de la app),
@@ -1030,6 +1051,19 @@ function escapeHtml(text) {
 function renderDashboardPlayerInfo(player) {
   const container = document.getElementById('dashboardPlayerInfo');
   if (!container) return;
+  // Insignia con el promedio, con el mismo color que los atributos (ver ATTR_VALUE_COLORS).
+  // El color sigue al número que se ve (ya redondeado): un 89,6 se muestra 90 y tiene que ser celeste.
+  const shown = Math.round(average(player.attrs, player) * SCORE_SCALE);
+  const bg = colorForAttrValue(shown / SCORE_SCALE);
+  const ataja = playsGoalkeeper(player);
+  const rule = ataja ? 'los 11 atributos, con Portería' : 'los 10 atributos, sin Portería (solo cuenta si ataja)';
+  const note = document.getElementById('dashboardRatingNote');
+  if (note) note.textContent = `Promedio: ${rule}.`;
+  const badge = `
+    <div class="player-rating" style="background:${bg};color:${readableTextColor(bg)}" title="Promedio de ${rule}">
+      <span class="player-rating-value">${shown}</span>
+      <span class="player-rating-label">Promedio</span>
+    </div>`;
   const items = [
     ['Nombre', currentPlayer],
     ['Apodo', player.apodo],
@@ -1038,7 +1072,7 @@ function renderDashboardPlayerInfo(player) {
     ['Pie dominante', player.pieDominante],
     ['Posición', [player.posPrincipal, player.posSecundaria].filter(Boolean).join(' / ')]
   ];
-  container.innerHTML = items.map(([label, value]) => `
+  container.innerHTML = badge + items.map(([label, value]) => `
     <div class="player-info-item">
       <span class="hint">${label}</span>
       <span class="player-info-value">${value ? escapeHtml(value) : '—'}</span>
@@ -1105,16 +1139,16 @@ function renderDashboardDiff(player, history) {
     <div class="diff-grid">${rows}</div>`;
 }
 
-// Línea de tiempo del promedio general: un punto por evaluación guardada,
+// Línea de tiempo del promedio: un punto por evaluación guardada,
 // más el valor actual (en vivo) al final para ver hacia dónde va ahora.
 function updateDashboardTrend(player, history) {
   const ctx = document.getElementById('dashboardTrendChart');
   if (!ctx || typeof Chart === 'undefined') return;
 
   const labels = history.map(h => h.label || formatDateDisplay(h.date));
-  const data = history.map(h => toScore(average(h.attrs)));
+  const data = history.map(h => toScore(average(h.attrs, player)));
   labels.push('Actual');
-  data.push(toScore(average(player.attrs)));
+  data.push(toScore(average(player.attrs, player)));
 
   if (dashboardTrendChart) {
     dashboardTrendChart.data.labels = labels;
@@ -1128,7 +1162,7 @@ function updateDashboardTrend(player, history) {
     data: {
       labels,
       datasets: [{
-        label: 'Promedio general',
+        label: 'Promedio',
         data,
         borderColor: '#0d7d2a',
         backgroundColor: 'rgba(13, 125, 42, 0.15)',
@@ -1148,7 +1182,7 @@ function updateDashboardTrend(player, history) {
 
 // Historial completo, más reciente primero, cada fila comparada con la
 // evaluación guardada inmediatamente anterior (no con la actual).
-function renderDashboardTimeline(history) {
+function renderDashboardTimeline(history, player) {
   const container = document.getElementById('dashboardTimeline');
   if (!history.length) {
     container.innerHTML = '<p class="hint">Sin evaluaciones guardadas todavía.</p>';
@@ -1156,10 +1190,10 @@ function renderDashboardTimeline(history) {
   }
   const rows = history.map((entry, idx) => {
     const prev = idx > 0 ? history[idx - 1] : null;
-    const avg = average(entry.attrs);
+    const avg = average(entry.attrs, player);
     // La diferencia se calcula ya en escala 1-100 (con un decimal), no sobre
     // los valores guardados redondeados: si no, +2,7 puntos se vería como +3.
-    const avgDiff = prev ? Math.round((toScore(avg) - toScore(average(prev.attrs))) * 10) / 10 : null;
+    const avgDiff = prev ? Math.round((toScore(avg) - toScore(average(prev.attrs, player))) * 10) / 10 : null;
     const cls = avgDiff > 0 ? 'diff-up' : avgDiff < 0 ? 'diff-down' : 'diff-same';
     const diffText = avgDiff === null || avgDiff === 0
       ? ''
