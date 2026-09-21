@@ -342,7 +342,10 @@ entrada guardada en `history`. Cada atributo se pinta verde
 (`.diff-up`) si subió, rojo (`.diff-down`) si bajó — por ejemplo, una
 lesión que le baja la Velocidad — o gris (`.diff-same`) si no cambió.
 Si todavía no hay ninguna entrada guardada, muestra un mensaje en vez
-de la tabla.
+de la tabla. Las filas van dentro de un `<div class="diff-grid">`: la
+tarjeta ocupa todo el ancho, debajo de "Atributos" + "Perfil actual", y
+la grilla las reparte en las columnas que entren (2 en escritorio, 1 en
+celular).
 
 ### `updateDashboardTrend(player, history)`
 
