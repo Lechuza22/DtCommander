@@ -328,7 +328,7 @@ function defaultState() {
   // Solo en la demo inicial (plantel de ejemplo) dejamos el 2-3-2 ya armado.
   match.plans['Plan A'].formations['2-3-2'].placements = applyPresetToPlacements('2-3-2', DEFAULT_PLAYERS);
   const matches = { [matchId]: match };
-  return { players, matches, activeMatch: matchId, trainingLogs: [], tactics: [] };
+  return { players, matches, activeMatch: matchId, trainingLogs: [], tactics: [], simulations: [] };
 }
 
 // ---- Tácticas (tablero de la solapa Táctica; la UI vive en js/tactica.js) ----
@@ -388,19 +388,85 @@ function sanitizeTactics(list) {
   return (Array.isArray(list) ? list : []).map(sanitizeTactic).filter(Boolean);
 }
 
-// Une lo local con lo que trae la Sheet, táctica por táctica: gana la que se
+// Une lo local con lo que trae la Sheet, elemento por elemento: gana el que se
 // tocó más tarde. A diferencia del resto de los datos (donde gana la Sheet),
 // acá no se puede pisar lo local: una táctica hecha sin conexión, o antes de
 // actualizar el Apps Script, se perdería. Eliminar es "blando" (deleted: true)
 // justamente para que una copia vieja no la haga reaparecer.
-function mergeTactics(localList, remoteList) {
+function mergeById(localList, remoteList, sanitizeList) {
   const byId = new Map();
-  sanitizeTactics(remoteList).forEach(t => byId.set(t.id, t));
-  sanitizeTactics(localList).forEach(t => {
+  sanitizeList(remoteList).forEach(t => byId.set(t.id, t));
+  sanitizeList(localList).forEach(t => {
     const remote = byId.get(t.id);
     if (!remote || t.updatedAt > remote.updatedAt) byId.set(t.id, t);
   });
   return Array.from(byId.values());
+}
+
+function mergeTactics(localList, remoteList) {
+  return mergeById(localList, remoteList, sanitizeTactics);
+}
+
+// ---- Simulaciones (solapa Simulación; la UI vive en js/simulacion.js) ----
+// Una simulación es una jugada animada en fases: { id, name, createdAt,
+// updatedAt, deleted, items[] }. Los items son una lista plana (así entra tal
+// cual en la hoja "Simulaciones", que tiene el mismo formato que "Tacticas"):
+//   { type: 'phase', ph, name, note, dur }  una por fase; dur = segundos que
+//                                           dura la transición HACIA esa fase
+//   { type: 'player' | 'rival' | 'ball', ph, x, y, ... }  lo que hay en cada fase
+const SIM_ITEM_TYPES = ['phase', 'player', 'rival', 'ball'];
+const MAX_SIM_PHASES = 12;
+const SIM_DEFAULT_DUR = 2;
+
+function sanitizeSimItems(items) {
+  if (!Array.isArray(items)) return [];
+  const num = v => (v !== '' && v !== null && Number.isFinite(Number(v))) ? Number(v) : null;
+  const out = [];
+  items.forEach((raw, idx) => {
+    if (!raw || !SIM_ITEM_TYPES.includes(raw.type)) return;
+    const phRaw = num(raw.ph);
+    const ph = Math.min(MAX_SIM_PHASES - 1, Math.max(0, phRaw === null ? 0 : Math.floor(phRaw)));
+    const base = { id: String(raw.id || 'i' + idx), type: raw.type, ph };
+    if (raw.type === 'phase') {
+      const dur = num(raw.dur);
+      out.push({
+        ...base,
+        name: String(raw.name || '').slice(0, 40),
+        note: String(raw.note || '').slice(0, 140),
+        dur: dur === null ? SIM_DEFAULT_DUR : Math.min(6, Math.max(0.5, dur))
+      });
+      return;
+    }
+    const x = num(raw.x), y = num(raw.y);
+    if (x === null || y === null) return;
+    const item = { ...base, x, y };
+    if (raw.type === 'player') item.name = String(raw.name || '').slice(0, 40);
+    if (raw.type === 'rival') item.label = String(raw.label || '').slice(0, 3);
+    if (raw.type === 'ball') item.carrier = typeof raw.carrier === 'string' ? raw.carrier.slice(0, 50) : '';
+    out.push(item);
+  });
+  return out;
+}
+
+function sanitizeSimulation(raw) {
+  if (!raw || !raw.id) return null;
+  const deleted = raw.deleted === true || raw.deleted === 'true' || raw.deleted === 'si';
+  return {
+    id: String(raw.id),
+    name: String(raw.name || '').slice(0, 60),
+    createdAt: String(raw.createdAt || ''),
+    updatedAt: String(raw.updatedAt || ''),
+    deleted,
+    items: deleted ? [] : sanitizeSimItems(raw.items)
+  };
+}
+
+function sanitizeSimulations(list) {
+  return (Array.isArray(list) ? list : []).map(sanitizeSimulation).filter(Boolean);
+}
+
+function mergeSimulations(localList, remoteList) {
+  return mergeById(localList, remoteList, sanitizeSimulations);
 }
 
 function loadLocal() {
@@ -415,6 +481,7 @@ function loadLocal() {
       return null;
     }
     parsed.tactics = sanitizeTactics(parsed.tactics);
+    parsed.simulations = sanitizeSimulations(parsed.simulations);
     return parsed;
   } catch (err) {
     return null;
@@ -475,6 +542,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupDashboard();
     setupEntrenamiento();
     if (typeof setupTactica === 'function') setupTactica();
+    if (typeof setupSimulacion === 'function') setupSimulacion();
     renderAll();
   } catch (err) {
     // Si el render local falla (p. ej. estado viejo en localStorage), no
@@ -537,7 +605,8 @@ function normalizeRemoteState(remote) {
     matches,
     activeMatch,
     trainingLogs: remote.trainingLogs || [],
-    tactics: mergeTactics(state.tactics, remote.tactics)
+    tactics: mergeTactics(state.tactics, remote.tactics),
+    simulations: mergeSimulations(state.simulations, remote.simulations)
   };
 }
 
@@ -548,6 +617,7 @@ function renderAll() {
   renderDashboard();
   renderEntrenamiento();
   if (typeof renderTactica === 'function') renderTactica();
+  if (typeof renderSimulacion === 'function') renderSimulacion();
 }
 
 // ==================================================================
@@ -564,6 +634,7 @@ function setupTabs() {
       if (btn.dataset.tab === 'panel-jugadora') renderDashboard();
       if (btn.dataset.tab === 'panel-entrenamiento') renderEntrenamiento();
       if (btn.dataset.tab === 'panel-tactica' && typeof renderTactica === 'function') renderTactica();
+      if (btn.dataset.tab === 'panel-simulacion' && typeof renderSimulacion === 'function') renderSimulacion();
       // Con 5 solapas la barra se desplaza en pantallas chicas: dejar visible la activa.
       btn.scrollIntoView({ inline: 'center', block: 'nearest' });
     });
