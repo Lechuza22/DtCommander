@@ -33,7 +33,6 @@
     <button class="tab-btn" data-tab="panel-formacion">Formación</button>
     <button class="tab-btn" data-tab="panel-tactica">Táctica</button>
     <button class="tab-btn" data-tab="panel-simulacion">Simulación</button>
-    <button class="tab-btn" data-tab="panel-secuencia">Secuencia</button>
     <button class="tab-btn" data-tab="panel-entrenamiento">Entrenamiento</button>
   </nav>
 
@@ -411,134 +410,6 @@
       </div>
     </section>
 
-    <!-- ===== SECUENCIA (una jugada grabada moviendo las piezas) ===== -->
-    <section id="panel-secuencia" class="tab-panel">
-      <div class="card">
-        <div class="roster-controls">
-          <select id="seqSelect" title="Secuencias guardadas"></select>
-          <button id="newSeqBtn" class="btn">+ Secuencia</button>
-          <button id="removeSeqBtn" class="btn btn-danger">Eliminar</button>
-        </div>
-        <div id="seqConfirm" class="add-player-form" hidden>
-          <span>Tenés cambios sin guardar en esta secuencia.</span>
-          <button id="seqConfirmSave" class="btn">Guardar y seguir</button>
-          <button id="seqConfirmDiscard" class="btn btn-danger">Descartar</button>
-          <button id="seqConfirmCancel" class="btn btn-secondary">Cancelar</button>
-        </div>
-        <div class="add-player-form">
-          <input type="text" id="seqName" placeholder="Nombre de la secuencia" maxlength="60">
-          <button id="saveSeqBtn" class="btn">Guardar</button>
-          <button id="saveSeqCopyBtn" class="btn btn-secondary">Guardar como copia</button>
-          <button id="exportSeqVideoBtn" class="btn btn-secondary">Descargar video (MP4)</button>
-          <span id="seqStatus" class="hint"></span>
-          <span id="seqError" class="form-error"></span>
-        </div>
-      </div>
-
-      <div class="card">
-        <h2>Empezar desde</h2>
-        <div class="sim-start">
-          <div class="sim-start-row">
-            <select id="seqTemplate"></select>
-            <button id="useSeqTemplateBtn" class="btn btn-secondary">Usar jugada de ejemplo</button>
-          </div>
-          <div class="sim-start-row">
-            <select id="seqFromTactic"></select>
-            <button id="useSeqTacticBtn" class="btn btn-secondary">Tomar de una táctica</button>
-          </div>
-        </div>
-        <p class="hint">Primero armás cómo arranca la jugada (<strong>1. Armar</strong>) y después la grabás moviendo las piezas (<strong>2. Grabar</strong>). Cada arrastre queda como un movimiento numerado en la cancha y en la tabla de abajo.</p>
-      </div>
-
-      <div class="field-layout">
-        <div class="card available-panel">
-          <h2>Jugadoras</h2>
-          <div id="seqPlayers" class="available-list"></div>
-          <div class="tactic-team-actions">
-            <button type="button" id="addSeqRivalBtn" class="btn btn-secondary">+ Rival</button>
-            <button type="button" id="addSeqBallBtn" class="btn btn-secondary">+ Pelota</button>
-            <button type="button" id="seqImportFormationBtn" class="btn btn-secondary">Traer de Formación</button>
-            <button type="button" id="seqAssignBtn" class="btn" hidden>Asignar mi plantel a los puestos</button>
-          </div>
-          <div class="position-legend">
-            <span class="legend-item"><span class="legend-dot" style="background:#2563eb"></span>Nuestro equipo</span>
-            <span class="legend-item"><span class="legend-dot" style="background:#dc2626"></span>Rival</span>
-          </div>
-          <p class="hint">Solo en "1. Armar": arrastrá una jugadora de la lista a la cancha (o tocala para ponerla). Para sacarla, arrastrala afuera.</p>
-        </div>
-
-        <div class="card field-panel">
-          <svg id="seqField" viewBox="0 0 300 400" preserveAspectRatio="xMidYMid meet"></svg>
-
-          <div class="sim-row seq-modes">
-            <button type="button" class="tool-btn seq-mode" data-seqmode="setup">1. Armar</button>
-            <button type="button" class="tool-btn seq-mode" data-seqmode="record">2. Grabar</button>
-            <span class="seq-sep"></span>
-            <button type="button" class="tool-btn" data-seqrec="new" title="Cada movimiento va en un paso propio, después del anterior">Paso nuevo</button>
-            <button type="button" class="tool-btn" data-seqrec="same" title="El movimiento se suma al paso actual y pasa a la vez que los demás">Mismo paso (a la vez)</button>
-          </div>
-          <div class="sim-row sim-tools">
-            <button type="button" class="tool-btn" data-seqtool="move">Mover</button>
-            <button type="button" class="tool-btn" data-seqtool="text">Texto</button>
-            <button type="button" class="tool-btn" data-seqtool="zone">Zona</button>
-            <div class="tactic-palette" id="seqColors" aria-label="Color"></div>
-            <label class="tactic-check"><input type="checkbox" id="seqGrid"> Ver grilla</label>
-            <label class="tactic-check">Flechas
-              <select id="seqTracks">
-                <option value="current">Solo el paso actual</option>
-                <option value="upto" selected>Hasta este paso</option>
-                <option value="all">Todas</option>
-              </select>
-            </label>
-          </div>
-          <p class="hint sim-toolhint" id="seqToolHint"></p>
-
-          <div class="sim-selbar" id="seqSelBar">
-            <span id="seqSelLabel" class="sim-sellabel"></span>
-            <input type="text" id="seqTextInput" class="tactic-text-input" placeholder="Texto para la cancha" maxlength="60" hidden>
-            <select id="seqRename"></select>
-            <button type="button" class="tool-btn" id="seqGiveBall">Dar la pelota</button>
-            <button type="button" class="tool-btn" id="seqReleaseBall">Soltar la pelota</button>
-            <button type="button" class="tool-btn" id="seqRemoveSel">Quitar</button>
-          </div>
-
-          <div class="sim-panel">
-            <div class="phase-tabs" id="seqCursorTabs"></div>
-            <div class="sim-row">
-              <button type="button" class="tool-btn" id="seqUndo">Deshacer</button>
-              <button type="button" class="tool-btn" id="seqRedo">Rehacer</button>
-            </div>
-            <div class="sim-row sim-play">
-              <button type="button" class="btn" id="seqPlayBtn">Reproducir</button>
-              <input type="range" id="seqScrubber" min="0" max="1000" value="0" aria-label="Avance de la secuencia">
-              <span class="hint" id="seqTime"></span>
-              <button type="button" class="tool-btn" id="seqEditBtn" hidden>Volver a editar</button>
-            </div>
-            <div class="sim-row sim-options">
-              <label class="tactic-check">Velocidad
-                <select id="seqSpeed">
-                  <option value="0.5">0,5x</option>
-                  <option value="1" selected>1x</option>
-                  <option value="2">2x</option>
-                </select>
-              </label>
-              <label class="tactic-check"><input type="checkbox" id="seqLoop"> Repetir</label>
-            </div>
-            <div class="sim-caption" id="seqCaption" hidden>
-              <strong id="seqCaptionTitle"></strong>
-              <span id="seqCaptionNote"></span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="card">
-        <h2>Movimientos</h2>
-        <p class="hint">Cada arrastre grabado es una fila. Los de un mismo paso pasan a la vez. Acá cambiás el tipo de pase, el texto (que se ve en el video), cuánto dura cada paso y el orden.</p>
-        <div id="seqMoves" class="seq-moves"></div>
-      </div>
-    </section>
-
     <!-- ===== ENTRENAMIENTO ===== -->
     <section id="panel-entrenamiento" class="tab-panel">
       <div class="card">
@@ -591,6 +462,5 @@
   <script src="js/tactica.js"></script>
   <script src="js/simulacion-media.js"></script>
   <script src="js/simulacion.js"></script>
-  <script src="js/secuencia.js"></script>
 </body>
 </html>
