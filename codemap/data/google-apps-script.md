@@ -20,11 +20,13 @@ flowchart TD
     doGet --> jsonResponse_
 
     doGet --> readTrainingLogs_
+    doGet --> readTactics_
     POST["Request POST (Web App)"] --> doPost
     doPost --> writePlayers_
     doPost --> writeHistory_
     doPost --> writeMatches_
     doPost --> writeTrainingLogs_
+    doPost -->|solo si body.tactics es un array| writeTactics_
     doPost --> writeMeta_["writeMeta_('activeMatch', ...)"]
     doPost --> jsonResponse_
 
@@ -39,12 +41,17 @@ flowchart TD
     readTrainingLogs_ -->|lee| SheetEntrenamientos["Sheet Entrenamientos"]
     writeTrainingLogs_ -->|reescribe completa| SheetEntrenamientos
 
+    readTactics_ -->|une las celdas de datos y parsea el JSON| SheetTacticas["Sheet Tacticas"]
+    writeTactics_ -->|reescribe completa, repartiendo el JSON en celdas| SheetTacticas
+
     readPlayers_ --> getOrCreateSheet_
     writePlayers_ --> getOrCreateSheet_
     readMatches_ --> getOrCreateSheet_
     writeMatches_ --> getOrCreateSheet_
     readTrainingLogs_ --> getOrCreateSheet_
     writeTrainingLogs_ --> getOrCreateSheet_
+    readTactics_ --> getOrCreateSheet_
+    writeTactics_ --> getOrCreateSheet_
     readMeta_ --> getOrCreateSheet_
     writeMeta_ --> getOrCreateSheet_
 ```
@@ -74,6 +81,14 @@ flowchart TD
   vacía si la evaluación fue grupal. No tiene relación con
   `Jugadoras`/`Historial`: llenar esta rúbrica **no** modifica los
   atributos de nadie, es solo un registro de referencia.
+- **Tacticas** — `Id, Nombre, Creada, Actualizada, Eliminada, Datos,
+  Datos2, ...`. Una fila por táctica de la pestaña Táctica (ver
+  [js/tactica.js](../js/tactica.md)). El dibujo (`items`) va como JSON en
+  `Datos`; si supera los 40.000 caracteres se sigue en `Datos2`, `Datos3`...
+  porque una celda de Sheets aguanta 50.000. `Eliminada` vale `si` para las
+  tácticas borradas (borrado "blando": la fila queda, sin dibujo). Es la
+  única hoja que **no** se lee ni se escribe siempre entera desde la
+  app: ver más abajo.
 - **Meta** — `Clave, Valor`. Hoy solo guarda `activeMatch` (qué partido
   quedó abierto la última vez).
 
@@ -90,15 +105,32 @@ redeployar, solo las 5 keys en sí (`tecnica`, `tactica`, `presion`,
 
 ## `doGet(e)` / `doPost(e)`
 
-`doGet` arma `{ players, matches, trainingLogs, activeMatch }`
-combinando las seis hojas — `attachHistory_` le agrega el array
+`doGet` arma `{ players, matches, trainingLogs, tactics, activeMatch }`
+combinando las siete hojas — `attachHistory_` le agrega el array
 `.history` a cada jugadora de `players` antes de responder. `doPost`
 recibe ese mismo shape completo (mandado como `text/plain` desde el
 cliente para evitar el preflight de CORS — ver [[CORS / preflight]] en
 el Glosario) y reescribe **todo** — no hace merge ni upsert parcial:
 cada sync es una foto completa del estado actual de la app, para las 6
 hojas de datos (Jugadoras, Historial, Partidos, Formacion,
-Entrenamientos; Meta solo guarda `activeMatch`).
+Entrenamientos, Tacticas; Meta solo guarda `activeMatch`). La única
+excepción es `tactics`: `doPost` la escribe **solo si** el cuerpo trae un
+array `tactics`, así una versión vieja de la app (que no las conoce) no
+borra las que ya están en la Sheet.
+
+## Tácticas: `readTactics_()` / `writeTactics_(tactics)` / `asText_(value)`
+
+`writeTactics_` serializa cada `items` con `JSON.stringify` y lo reparte en
+trozos de `TACTICAS_CHUNK` (40.000) caracteres, uno por columna, así un
+dibujo grande no choca con el límite de una celda; las filas se rellenan
+con `''` hasta el mismo ancho y los encabezados se arman según lo que haga
+falta (`Datos`, `Datos2`...). Escribe con `setNumberFormat('@')` (texto
+plano) para que Sheets no interprete fechas ni fórmulas. `readTactics_`
+hace lo inverso: une todas las celdas desde la sexta columna, parsea el
+JSON (si una celda está rota devuelve `items: []` en vez de fallar el
+`doGet` entero) y `asText_` convierte a texto cualquier valor que Sheets
+haya transformado en `Date`. Ver [[eliminación blanda (soft delete)]] en el
+[Glosario](../../GLOSSARY.md).
 
 ## `jsonResponse_(obj)` / `getOrCreateSheet_(name, headers)`
 
