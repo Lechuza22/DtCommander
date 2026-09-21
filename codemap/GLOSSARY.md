@@ -282,3 +282,42 @@ perfil de una jugadora de un vistazo.
 **En este proyecto:** cargada desde CDN en [index.html](index.md);
 `updateRadarChart()` en [js/app.js](js/app.md) la usa para graficar los
 once atributos de la jugadora seleccionada.
+
+### táctica (tactic)
+
+Una jugada dibujada sobre la cancha (un córner, una salida desde el fondo,
+una presión) con las jugadoras, los rivales y las flechas que la explican.
+No es lo mismo que una *formación* (quién juega en qué lugar durante un
+partido) ni que la dimensión "táctica" de la rúbrica de entrenamiento
+(`tactica`, una de las cinco notas de 1 a 5): son tres cosas distintas que
+comparten la palabra.
+
+**En este proyecto:** cada una es un objeto de `state.tactics` con nombre y
+un dibujo (`items`); se edita en la pestaña Táctica
+([js/tactica.js](js/tactica.md)) y se guarda en la hoja `Tacticas` de la
+Sheet.
+
+### eliminación blanda (soft delete)
+
+En vez de borrar algo de verdad, se lo marca como eliminado y se lo deja
+guardado. Sirve cuando hay más de una copia de los datos (el navegador y la
+Sheet): si simplemente desapareciera, una copia vieja lo "resucitaría" la
+próxima vez que se sincronice, porque no habría forma de saber que fue
+borrado y no que nunca existió.
+
+**En este proyecto:** eliminar una táctica pone `deleted: true` y le vacía
+el dibujo. Al sincronizar, `mergeTactics()` en [js/app.js](js/app.md)
+compara `updatedAt` táctica por táctica y gana la más reciente, así una
+eliminación nueva le gana a una copia vieja, y una táctica hecha sin
+conexión no se pierde. La interfaz simplemente no muestra las eliminadas.
+
+### simplificación de trazos
+
+Un trazo hecho a mano alzada está formado por cientos de puntos casi
+alineados. El algoritmo de Ramer–Douglas–Peucker se queda solo con los
+puntos que hacen falta para que la línea conserve su forma dentro de una
+tolerancia, y descarta el resto.
+
+**En este proyecto:** `simplifyPath()` en [js/tactica.js](js/tactica.md)
+lo aplica al soltar el dedo (tolerancia de 0,6 unidades de cancha) para que
+los dibujos entren cómodos en la Sheet.
