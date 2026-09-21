@@ -21,12 +21,14 @@ flowchart TD
 
     doGet --> readTrainingLogs_
     doGet --> readTactics_
+    doGet --> readSimulations_
     POST["Request POST (Web App)"] --> doPost
     doPost --> writePlayers_
     doPost --> writeHistory_
     doPost --> writeMatches_
     doPost --> writeTrainingLogs_
     doPost -->|solo si body.tactics es un array| writeTactics_
+    doPost -->|solo si body.simulations es un array| writeSimulations_
     doPost --> writeMeta_["writeMeta_('activeMatch', ...)"]
     doPost --> jsonResponse_
 
@@ -41,8 +43,12 @@ flowchart TD
     readTrainingLogs_ -->|lee| SheetEntrenamientos["Sheet Entrenamientos"]
     writeTrainingLogs_ -->|reescribe completa| SheetEntrenamientos
 
-    readTactics_ -->|une las celdas de datos y parsea el JSON| SheetTacticas["Sheet Tacticas"]
-    writeTactics_ -->|reescribe completa, repartiendo el JSON en celdas| SheetTacticas
+    readTactics_ --> readDrawings_
+    readSimulations_ --> readDrawings_
+    writeTactics_ --> writeDrawings_
+    writeSimulations_ --> writeDrawings_
+    readDrawings_ -->|une las celdas de datos y parsea el JSON| SheetDibujos["Sheets Tacticas / Simulaciones"]
+    writeDrawings_ -->|reescribe completa, repartiendo el JSON en celdas| SheetDibujos
 
     readPlayers_ --> getOrCreateSheet_
     writePlayers_ --> getOrCreateSheet_
@@ -50,8 +56,8 @@ flowchart TD
     writeMatches_ --> getOrCreateSheet_
     readTrainingLogs_ --> getOrCreateSheet_
     writeTrainingLogs_ --> getOrCreateSheet_
-    readTactics_ --> getOrCreateSheet_
-    writeTactics_ --> getOrCreateSheet_
+    readDrawings_ --> getOrCreateSheet_
+    writeDrawings_ --> getOrCreateSheet_
     readMeta_ --> getOrCreateSheet_
     writeMeta_ --> getOrCreateSheet_
 ```
@@ -86,9 +92,14 @@ flowchart TD
   [js/tactica.js](../js/tactica.md)). El dibujo (`items`) va como JSON en
   `Datos`; si supera los 40.000 caracteres se sigue en `Datos2`, `Datos3`...
   porque una celda de Sheets aguanta 50.000. `Eliminada` vale `si` para las
-  tácticas borradas (borrado "blando": la fila queda, sin dibujo). Es la
-  única hoja que **no** se lee ni se escribe siempre entera desde la
-  app: ver más abajo.
+  tácticas borradas (borrado "blando": la fila queda, sin dibujo). Es una
+  de las dos hojas (con Simulaciones) que **no** se lee ni se escribe siempre
+  entera desde la app: ver más abajo.
+- **Simulaciones** — mismo formato que Tacticas (`Id, Nombre, Creada,
+  Actualizada, Eliminada, Datos, ...`), para las simulaciones de la pestaña
+  Simulación ([js/simulacion.js](../js/simulacion.md)). Su `Datos` es una
+  lista plana de items: una fila de tipo `phase` por fase (nombre, nota y
+  tiempo) más las piezas de cada fase.
 - **Meta** — `Clave, Valor`. Hoy solo guarda `activeMatch` (qué partido
   quedó abierto la última vez).
 
@@ -105,27 +116,29 @@ redeployar, solo las 5 keys en sí (`tecnica`, `tactica`, `presion`,
 
 ## `doGet(e)` / `doPost(e)`
 
-`doGet` arma `{ players, matches, trainingLogs, tactics, activeMatch }`
-combinando las siete hojas — `attachHistory_` le agrega el array
+`doGet` arma `{ players, matches, trainingLogs, tactics, simulations,
+activeMatch }` combinando las ocho hojas — `attachHistory_` le agrega el array
 `.history` a cada jugadora de `players` antes de responder. `doPost`
 recibe ese mismo shape completo (mandado como `text/plain` desde el
 cliente para evitar el preflight de CORS — ver [[CORS / preflight]] en
 el Glosario) y reescribe **todo** — no hace merge ni upsert parcial:
-cada sync es una foto completa del estado actual de la app, para las 6
+cada sync es una foto completa del estado actual de la app, para las
 hojas de datos (Jugadoras, Historial, Partidos, Formacion,
-Entrenamientos, Tacticas; Meta solo guarda `activeMatch`). La única
-excepción es `tactics`: `doPost` la escribe **solo si** el cuerpo trae un
-array `tactics`, así una versión vieja de la app (que no las conoce) no
+Entrenamientos, Tacticas, Simulaciones; Meta solo guarda `activeMatch`). La
+única excepción son `tactics` y `simulations`: `doPost` las escribe **solo
+si** el cuerpo trae un array con ese nombre, así una versión vieja de la app (que no las conoce) no
 borra las que ya están en la Sheet.
 
-## Tácticas: `readTactics_()` / `writeTactics_(tactics)` / `asText_(value)`
+## Tácticas y Simulaciones: `readDrawings_(sheet)` / `writeDrawings_(sheet, list)` / `asText_(value)`
 
-`writeTactics_` serializa cada `items` con `JSON.stringify` y lo reparte en
-trozos de `TACTICAS_CHUNK` (40.000) caracteres, uno por columna, así un
+Las dos hojas comparten el código: `readTactics_`, `writeTactics_`,
+`readSimulations_` y `writeSimulations_` son atajos de una línea a estas
+dos funciones. `writeDrawings_` serializa cada `items` con `JSON.stringify` y lo reparte en
+trozos de `DIBUJOS_CHUNK` (40.000) caracteres, uno por columna, así un
 dibujo grande no choca con el límite de una celda; las filas se rellenan
 con `''` hasta el mismo ancho y los encabezados se arman según lo que haga
 falta (`Datos`, `Datos2`...). Escribe con `setNumberFormat('@')` (texto
-plano) para que Sheets no interprete fechas ni fórmulas. `readTactics_`
+plano) para que Sheets no interprete fechas ni fórmulas. `readDrawings_`
 hace lo inverso: une todas las celdas desde la sexta columna, parsea el
 JSON (si una celda está rota devuelve `items: []` en vez de fallar el
 `doGet` entero) y `asText_` convierte a texto cualquier valor que Sheets
