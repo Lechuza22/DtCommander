@@ -23,9 +23,22 @@
     TOKEN_R: 14,
     // Dónde queda la pelota respecto de quien la lleva (abajo a la derecha, tocando el borde de la ficha)
     BALL_DX: 11,
-    BALL_DY: 10
+    BALL_DY: 10,
+    // Grilla de casilleros: 3 columnas (A a C, de izquierda a derecha) por 4 filas
+    // (1 a 4, desde el arco propio hacia el rival), alineada con las líneas de la cancha.
+    GRID: { x0: 10, y0: 10, cw: 280 / 3, ch: 95, cols: 3, rows: 4 },
+    // Adónde va la pelota en un tiro (x según el palo) y cuánto entra (y)
+    GOAL_X: { left: 128, center: 150, right: 172 },
+    GOAL_Y: { shot: 16, goal: 5 }
   };
-  const DRAW_ORDER = { arrow: 0, player: 1, rival: 1, ball: 2 };
+  const DRAW_ORDER = { grid: -2, zone: -1, arrow: 0, player: 1, rival: 1, ball: 2, text: 3 };
+
+  // Rectángulo de un casillero: c = columna 0-2, r = fila 1-4 contada desde el arco propio.
+  function cellRect(c, r) {
+    const g = THEME.GRID;
+    return { x: g.x0 + c * g.cw, y: g.y0 + (g.rows - r) * g.ch, w: g.cw, h: g.ch };
+  }
+  const cellName = (c, r) => 'ABC'.charAt(c) + r;
 
   const sorted = items => items.slice().sort((a, b) => DRAW_ORDER[a.type] - DRAW_ORDER[b.type]);
   const clamp01 = v => Math.max(0, Math.min(1, v));
@@ -107,14 +120,60 @@
     }
   }
 
+  // _h (0-1) es la altura de una pelota "por arriba": se dibuja más grande y levantada,
+  // con su sombra en el piso, para que se note que va por el aire.
   function ballSvg(g, item, selected) {
     g.setAttribute('transform', `translate(${item.x}, ${item.y})`);
     if (selected) selectionBox(g, -6, -6, 6, 6);
     svgEl('circle', { r: 13, fill: 'transparent' }, g);
-    svgEl('circle', { r: 6, fill: '#ffffff', stroke: '#111827', 'stroke-width': 1.2, 'pointer-events': 'none' }, g);
-    svgEl('polygon', {
-      points: '0,-3 2.9,-0.9 1.8,2.4 -1.8,2.4 -2.9,-0.9', fill: '#111827', 'pointer-events': 'none'
+    const h = item._h || 0;
+    if (h > 0.02) {
+      svgEl('ellipse', { cx: 0, cy: 0, rx: 5.5, ry: 3, fill: '#000000', 'fill-opacity': 0.3, 'pointer-events': 'none' }, g);
+    }
+    const inner = svgEl('g', {
+      transform: `translate(0, ${-Math.round(h * 18)}) scale(${(1 + 0.7 * h).toFixed(2)})`, 'pointer-events': 'none'
     }, g);
+    svgEl('circle', { r: 6, fill: '#ffffff', stroke: '#111827', 'stroke-width': 1.2 }, inner);
+    svgEl('polygon', { points: '0,-3 2.9,-0.9 1.8,2.4 -1.8,2.4 -2.9,-0.9', fill: '#111827' }, inner);
+  }
+
+  function textSvg(g, item, selected) {
+    const size = item.big ? 26 : 12;
+    const w = Math.max(20, item.text.length * size * 0.55);
+    if (!item._auto) {
+      svgEl('rect', { x: item.x - w / 2 - 4, y: item.y - size - 4, width: w + 8, height: size + 12, fill: 'transparent' }, g);
+    }
+    haloSvg(g, item.text, { x: item.x, y: item.y, fill: item.color, 'font-size': size });
+    if (selected) selectionBox(g, item.x - w / 2, item.y - size, item.x + w / 2, item.y + 4);
+  }
+
+  function zoneSvg(g, item) {
+    const r = cellRect(item.zc, item.zr);
+    svgEl('rect', {
+      x: r.x, y: r.y, width: r.w, height: r.h, fill: item.color, 'fill-opacity': 0.28,
+      stroke: item.color, 'stroke-opacity': 0.9, 'stroke-width': 1.5
+    }, g);
+  }
+
+  function gridSvg(g) {
+    const gr = THEME.GRID;
+    const line = { stroke: '#ffffff', 'stroke-opacity': 0.5, 'stroke-width': 1, 'stroke-dasharray': '5 4' };
+    for (let c = 1; c < gr.cols; c++) {
+      svgEl('line', Object.assign({ x1: gr.x0 + c * gr.cw, y1: gr.y0, x2: gr.x0 + c * gr.cw, y2: gr.y0 + gr.rows * gr.ch }, line), g);
+    }
+    for (let r = 1; r < gr.rows; r++) {
+      svgEl('line', Object.assign({ x1: gr.x0, y1: gr.y0 + r * gr.ch, x2: gr.x0 + gr.cols * gr.cw, y2: gr.y0 + r * gr.ch }, line), g);
+    }
+    for (let c = 0; c < gr.cols; c++) {
+      for (let r = 1; r <= gr.rows; r++) {
+        const rect = cellRect(c, r);
+        const t = svgEl('text', {
+          x: rect.x + 5, y: rect.y + 12, fill: '#ffffff', 'fill-opacity': 0.6, 'font-size': 10,
+          'font-weight': 700, 'font-family': THEME.FONT, 'pointer-events': 'none'
+        }, g);
+        t.textContent = cellName(c, r);
+      }
+    }
   }
 
   function arrowSvg(g, a) {
@@ -135,13 +194,18 @@
   function renderItemsSvg(parent, items, opts) {
     const o = opts || {};
     sorted(items).forEach(item => {
-      const auto = !!item._auto;
+      // Flechas de recorrido, casilleros y grilla son solo decoración: no reciben toques.
+      const auto = !!item._auto || item.type === 'zone' || item.type === 'grid';
       const g = svgEl('g', auto ? { class: 't-auto', 'pointer-events': 'none' } : { class: 't-item', 'data-id': item.id }, parent);
       const opacity = item.id === o.outsideId ? 0.45 : item._o;
       if (opacity !== undefined && opacity < 1) g.setAttribute('opacity', clamp01(opacity));
+      const selected = !auto && item.id === o.selectedId;
       if (item.type === 'arrow') arrowSvg(g, item);
-      else if (item.type === 'ball') ballSvg(g, item, !auto && item.id === o.selectedId);
-      else tokenSvg(g, item, !auto && item.id === o.selectedId);
+      else if (item.type === 'ball') ballSvg(g, item, selected);
+      else if (item.type === 'text') textSvg(g, item, selected);
+      else if (item.type === 'zone') zoneSvg(g, item);
+      else if (item.type === 'grid') gridSvg(g);
+      else tokenSvg(g, item, selected);
     });
   }
 
@@ -180,7 +244,39 @@
     sorted(items).forEach(item => {
       ctx.save();
       ctx.globalAlpha = item._o === undefined ? 1 : clamp01(item._o);
-      if (item.type === 'arrow') {
+      if (item.type === 'zone') {
+        const r = cellRect(item.zc, item.zr);
+        ctx.globalAlpha *= 0.28;
+        ctx.fillStyle = item.color;
+        ctx.fillRect(r.x, r.y, r.w, r.h);
+        ctx.globalAlpha = (item._o === undefined ? 1 : clamp01(item._o)) * 0.9;
+        ctx.strokeStyle = item.color;
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(r.x, r.y, r.w, r.h);
+      } else if (item.type === 'grid') {
+        const gr = THEME.GRID;
+        ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([5, 4]);
+        for (let c = 1; c < gr.cols; c++) {
+          ctx.beginPath(); ctx.moveTo(gr.x0 + c * gr.cw, gr.y0); ctx.lineTo(gr.x0 + c * gr.cw, gr.y0 + gr.rows * gr.ch); ctx.stroke();
+        }
+        for (let r = 1; r < gr.rows; r++) {
+          ctx.beginPath(); ctx.moveTo(gr.x0, gr.y0 + r * gr.ch); ctx.lineTo(gr.x0 + gr.cols * gr.cw, gr.y0 + r * gr.ch); ctx.stroke();
+        }
+        ctx.setLineDash([]);
+        ctx.font = `bold 10px ${THEME.FONT}`;
+        ctx.textAlign = 'left';
+        ctx.fillStyle = 'rgba(255,255,255,0.6)';
+        for (let c = 0; c < gr.cols; c++) {
+          for (let r = 1; r <= gr.rows; r++) {
+            const rect = cellRect(c, r);
+            ctx.fillText(cellName(c, r), rect.x + 5, rect.y + 12);
+          }
+        }
+      } else if (item.type === 'text') {
+        haloCanvas(ctx, item.text, item.x, item.y, item.big ? 26 : 12, item.color);
+      } else if (item.type === 'arrow') {
         const geo = arrowGeometry(item);
         ctx.strokeStyle = item.color;
         ctx.fillStyle = item.color;
@@ -200,6 +296,15 @@
         ctx.fill();
       } else if (item.type === 'ball') {
         ctx.translate(item.x, item.y);
+        const h = item._h || 0;
+        if (h > 0.02) {
+          ctx.beginPath();
+          ctx.ellipse(0, 0, 5.5, 3, 0, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(0,0,0,0.3)';
+          ctx.fill();
+        }
+        ctx.translate(0, -Math.round(h * 18));
+        ctx.scale(1 + 0.7 * h, 1 + 0.7 * h);
         ctx.beginPath();
         ctx.arc(0, 0, 6, 0, Math.PI * 2);
         ctx.fillStyle = '#ffffff';
@@ -401,6 +506,7 @@
   }
 
   window.SimMedia = {
-    THEME, VIDEO, svgEl, drawPitchSvg, renderItemsSvg, drawVideoFrame, recordVideo, videoSupported, loadCrest
+    THEME, VIDEO, svgEl, drawPitchSvg, renderItemsSvg, drawVideoFrame, recordVideo, videoSupported, loadCrest,
+    cellRect, cellName
   };
 })();
