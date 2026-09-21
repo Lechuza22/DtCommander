@@ -98,8 +98,11 @@ flowchart TD
 - **Simulaciones** — mismo formato que Tacticas (`Id, Nombre, Creada,
   Actualizada, Eliminada, Datos, ...`), para las simulaciones de la pestaña
   Simulación ([js/simulacion.js](../js/simulacion.md)). Su `Datos` es una
-  lista plana de items: una fila de tipo `phase` por fase (nombre, nota y
-  tiempo) más las piezas de cada fase.
+  lista plana de items: una fila de tipo `phase` por fase (nombre, nota,
+  tiempo y orden de las acciones), las piezas de cada fase, y sus acciones,
+  textos y casilleros sombreados. Como el Apps Script solo guarda y devuelve
+  esa lista sin mirar su contenido, sumar tipos de item nuevos no obliga a
+  volver a pegar el script.
 - **Meta** — `Clave, Valor`. Hoy solo guarda `activeMatch` (qué partido
   quedó abierto la última vez).
 
