@@ -359,19 +359,5 @@ solo llega a la boca del arco, sin pasar la línea, es un tiro y no un gol.
 
 **En este proyecto:** `goalSide(x, y)` en
 [js/simulacion-media.js](js/simulacion-media.md) decide si un punto está
-adentro de un arco; `goalPhase()` en [js/simulacion.js](js/simulacion.md) y
-`goalStep()` en [js/secuencia.js](js/secuencia.md) buscan la fase o el paso
-del gol.
-
-### movimiento grabado (frente a foto de una fase)
-
-Dos formas de guardar una jugada. En la de **fases**, cada fase es una foto de
-dónde está cada pieza y la animación calcula el camino entre dos fotos. En la
-**grabada**, lo que se guarda es cada movimiento (qué pieza, por qué camino,
-adónde llega) y las posiciones de cada momento se **derivan** aplicando los
-movimientos en orden. La ventaja de la segunda es que corregir un movimiento
-del principio acomoda solo todo lo que viene después.
-
-**En este proyecto:** la pestaña Simulación es la de fases y la pestaña
-Secuencia ([js/secuencia.js](js/secuencia.md)) es la grabada; `allStates()`
-deriva las posiciones de cada paso.
+adentro de un arco; `goalPhase()` en [js/simulacion.js](js/simulacion.md)
+busca la fase del gol.
