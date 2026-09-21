@@ -1,6 +1,6 @@
 # index.html
 
-El único documento HTML de la app: define la estructura (header, cuatro
+El único documento HTML de la app: define la estructura (header, cinco
 pestañas, formularios) que [js/app.js](js/app.md) rellena y manipula. No
 tiene lógica propia — es puro esqueleto con IDs y clases que el
 JavaScript busca por `document.getElementById` / `querySelectorAll`.
@@ -14,7 +14,7 @@ flowchart TD
     Header["header (#syncStatus, #logoutBtn)"] --> SheetsIntegration["js/sheets-integration.js: setStatus()"]
     Header --> AuthJS
 
-    TabsNav[".tab-btn (Evaluador / Jugadora / Formación / Entrenamiento)"] --> AppTabs["js/app.js: setupTabs()"]
+    TabsNav[".tab-btn (Evaluador / Jugadora / Formación / Táctica / Entrenamiento)"] --> AppTabs["js/app.js: setupTabs()"]
 
     PanelEvaluador["#panel-evaluador"] --> PlayerSelect["#playerSelect"]
     PanelEvaluador --> AddRemove["#addPlayerBtn / #addPlayerForm / #removePlayerBtn"]
@@ -42,6 +42,12 @@ flowchart TD
     PanelFormacion --> Suggestions["#suggestions / #suggestionsList"]
     PanelFormacion --> Field["#field (svg, viewBox 0 0 300 400)"]
 
+    PanelTactica["#panel-tactica"] --> TacticControls["#tacticSelect / #newTacticBtn / #removeTacticBtn / #tacticConfirm"]
+    PanelTactica --> TacticSave["#tacticName / #saveTacticBtn / #saveTacticCopyBtn / #exportTacticBtn"]
+    PanelTactica --> TacticToolbar["#tacticTools / #tacticPalette / #tacticDash / #tacticTextRow / #tacticUndo"]
+    PanelTactica --> TacticPlayers["#tacticPlayers / #addRivalBtn / #importFormationBtn"]
+    PanelTactica --> TacticField["#tacticField (svg, lo dibuja el JS)"]
+
     PanelEntrenamiento["#panel-entrenamiento"] --> TrainingTabs["#trainingPositionTabs"]
     PanelEntrenamiento --> TrainingSuggestions["#trainingSuggestions"]
     PanelEntrenamiento --> RubricForm["#openRubricBtn / #rubricForm / #rubricCriteria"]
@@ -54,7 +60,7 @@ flowchart TD
   anidados. `#appRoot` arranca con `hidden` puesto directamente en el
   HTML (no por JS) para que no haya un instante de "flash" de la app
   antes de que [js/auth.js](js/auth.md) decida si mostrarla. Todo lo
-  que describe el resto de este documento (header, tabs, las cuatro
+  que describe el resto de este documento (header, tabs, las cinco
   pestañas) vive **dentro** de `#appRoot`.
 - **`#syncStatus`**: un punto (`●`) en el header cuyo color y `title`
   controla por completo [js/sheets-integration.js](js/sheets-integration.md)
@@ -99,11 +105,19 @@ flowchart TD
   `[hidden] { display: none !important; }` cerca del principio — sin
   ella, los formularios de arriba quedaban siempre visibles aunque el
   atributo `hidden` estuviera bien puesto (bug real que hubo en la app).
-- Carga cuatro `<script>` al final del `<body>`, en este orden:
-  `auth.js`, Chart.js (CDN), `sheets-integration.js`, `app.js`.
+- Carga cinco `<script>` al final del `<body>`, en este orden:
+  `auth.js`, Chart.js (CDN), `sheets-integration.js`, `app.js`, `tactica.js`.
   `auth.js` va primero porque decide si el resto siquiera se ve; el
   resto del orden importa porque `app.js` usa `window.SheetsSync` y
-  `Chart` al arrancar.
+  `Chart` al arrancar. `tactica.js` va después de `app.js` porque usa sus
+  funciones y su estado, y `app.js` lo invoca con un `typeof` de por medio.
+- **`#tacticField`** es un `<svg>` vacío (solo el `viewBox`): la cancha, las
+  jugadoras y los dibujos los crea [js/tactica.js](js/tactica.md). La
+  barra de herramientas (`.tactic-tools-card`) queda fija arriba en
+  celulares (`position: sticky`). `#tacticTextRow` (el cuadro para
+  escribir texto) arranca `hidden` y solo se muestra con la herramienta
+  Texto o con un texto seleccionado. `#tacticConfirm` es la barra inline
+  "cambios sin guardar" (mismo patrón que los otros formularios inline).
 
 ## Dependencias externas
 
@@ -113,6 +127,7 @@ flowchart TD
 | [js/auth.md](js/auth.md) | Pantalla de login (disuasoria, no real) |
 | [Chart.js](https://www.chartjs.org/) (CDN `jsdelivr`) | Radar chart de atributos |
 | [js/sheets-integration.js](js/sheets-integration.md) | Sync con Google Sheets |
-| [js/app.js](js/app.md) | Toda la lógica de la app |
+| [js/app.js](js/app.md) | Estado, Evaluador, Jugadora, Formación y Entrenamiento |
+| [js/tactica.js](js/tactica.md) | Pestaña Táctica (tablero libre) |
 
 Ver también [GLOSSARY.md](GLOSSARY.md).
