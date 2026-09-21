@@ -53,6 +53,16 @@ sea fácil ubicar qué tocar.
   `#field`, y un cursor distinto por herramienta según la clase
   `tool-*` que le pone el JS). Los colores de lo dibujado no están acá:
   van como atributos del SVG (ver [js/tactica.js](../js/tactica.md)).
+- **Simulación**: `#simField` (igual que `#tacticField`), `.sim-start` /
+  `.sim-start-row` (la tarjeta "Empezar desde"), `.sim-selbar` (acciones de
+  la ficha seleccionada), `.sim-panel` (el panel de fases debajo de la
+  cancha), `.phase-tabs` / `.phase-tab` (una pestaña por fase; se desliza de
+  costado), `.sim-row`, `.sim-note`, `.sim-dur`, `.sim-caption` (la nota de la
+  fase al reproducir). Con `.sim-playing` en el panel la lista de jugadoras se
+  atenúa y no recibe toques. Ojo con `.field-layout > .card { min-width: 0 }`:
+  sin eso una columna de la grilla no se achica por debajo de su contenido y la
+  fila de pestañas de fase (que no se puede comprimir) ensanchaba toda la
+  página en celulares.
 - **Formularios inline** (alta de jugadora, de partido, y de evaluación):
   `.add-player-form`, reutilizado por `#addPlayerForm`, `#addMatchForm` y
   `#saveEvalForm` — incluye estilos tanto para `input[type=text]` como
@@ -81,7 +91,7 @@ sea fácil ubicar qué tocar.
 - **`@media (max-width: 640px)`**: ajustes responsive — la grilla de
   Formación pasa a una columna y la lista de disponibles se vuelve
   horizontal, pensado para usar la app desde el celular en la cancha.
-  Con 5 solapas la barra `.tabs` se vuelve desplazable de costado
+  Con 6 solapas la barra `.tabs` se vuelve desplazable de costado
   (`overflow-x: auto`, botones que no se achican) sin desbordar la
   página.
 
