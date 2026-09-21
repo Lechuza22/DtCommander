@@ -25,7 +25,7 @@ pelota, `_h` (altura de 0 a 1 en un pase por arriba: se dibuja más grande y
 levantada, con su sombra en el piso). El orden de capas (`DRAW_ORDER`) es:
 grilla, casilleros, flechas, jugadoras y rivales, pelota y textos.
 
-Los **recorridos** (`type: 'track'`, usados por la Secuencia) son una lista de
+Los **recorridos** (`type: 'track'`, los usaba la solapa Secuencia, hoy archivada; quedan acá por si se reactiva) son una lista de
 puntos con su flecha y el número del paso en un círculo (`trackSvg`,
 `trackParts`): la punta apunta según los últimos ~8 de camino, así una curva
 que termina lenta igual queda bien orientada. `pointAlong(puntos, fracción)` da el
@@ -45,8 +45,8 @@ un tiro (a la boca del arco) o un gol (adentro).
 
 `drawPitchSvg` y `drawPitchCanvas` dibujan un arco en cada línea de fondo (una
 caja de 56 x 8 unidades, de x 122 a 178, con relleno translúcido, postes
-blancos y red). `goalSide(x, y)` es la regla del gol y la usan Simulación y
-Secuencia: devuelve `'top'` o `'bottom'` si el punto está entre los postes y
+blancos y red). `goalSide(x, y)` es la regla del gol y la usa Simulación (y la usaba
+Secuencia): devuelve `'top'` o `'bottom'` si el punto está entre los postes y
 pasó la línea de fondo (y de 10 o menos, o de 390 o más), y `null` si no. Un
 punto sobre la línea (y = 10) cuenta como adentro; el tiro a la boca queda en
 y = 16, así que no es gol. Táctica y la cancha de Formación dibujan los mismos
