@@ -7,7 +7,7 @@ formación del equipo en un campo visual (con un historial de partidos,
 cada uno con hasta 3 planes/tableros independientes), dibuje jugadas en
 un tablero táctico libre (flechas, lápiz, texto; se guardan con nombre y
 se exportan como imagen), simule esas jugadas animadas en fases, con acciones sobre una grilla de
-casilleros (avanzar, pase, centro, tiro, gol) y video MP4, y planifique
+casilleros (avanzar, pase, centro, tiro, gol) y video MP4, o grabe la jugada moviendo las piezas (pestaña Secuencia), y planifique
 entrenamientos con una rúbrica de evaluación manual — todo sincronizado
 automáticamente contra una Google Sheet.
 
@@ -23,6 +23,7 @@ graph LR
     HTML --> TacticaJS["js/tactica.js"]
     HTML --> SimMediaJS["js/simulacion-media.js"]
     HTML --> SimJS["js/simulacion.js"]
+    HTML --> SeqJS["js/secuencia.js"]
 
     AuthJS -->|"tapa/destapa #appRoot"| LocalStorage["localStorage"]
 
@@ -32,6 +33,9 @@ graph LR
     TacticaJS -->|"usa state y saveState()"| AppJS
     SimJS -->|"usa state y saveState()"| AppJS
     SimJS -->|"dibuja y graba video"| SimMediaJS
+    SeqJS -->|"usa state y saveState()"| AppJS
+    SeqJS -->|"dibuja y graba video"| SimMediaJS
+    SimJS -->|"expone las jugadas de ejemplo"| SeqJS
 
     SheetsJS -->|"fetch GET/POST"| WebApp["Google Apps Script (Web App)"]
     WebApp -->|"lee/escribe"| Sheet["Google Sheet del usuario"]
@@ -90,6 +94,7 @@ Google — no hay ningún servidor intermedio propio.
 - [js/auth.md](js/auth.md) — pantalla de login (disuasoria, no real)
 - [js/app.md](js/app.md) — estado, Evaluador, Jugadora, Formación (drag & drop), Entrenamiento
 - [js/simulacion.md](js/simulacion.md) — pestaña Simulación: jugada animada en fases (pelota pegada, notas, tiempos, jugadas de ejemplo), historial y video MP4
+- [js/secuencia.md](js/secuencia.md) — pestaña Secuencia: jugada grabada moviendo las piezas (pasos individuales o simultáneos, recorridos numerados, tabla de movimientos), historial y video MP4
 - [js/simulacion-media.md](js/simulacion-media.md) — dibujo de la cancha (SVG y canvas) y grabación de video
 - [js/tactica.md](js/tactica.md) — pestaña Táctica: tablero libre (jugadoras, rivales, flechas, lápiz, texto), historial de tácticas y exportar imagen
 - [js/sheets-integration.md](js/sheets-integration.md) — sync automática con Sheets
