@@ -86,7 +86,10 @@ el toque cuando se la quiere mover. Las flechas y los trazos llevan además
 una línea invisible más ancha (16 unidades) que hace de "zona de toque",
 porque una línea de 2,6 unidades es imposible de agarrar con el dedo. La
 punta de la flecha se calcula a mano como un triángulo (no con un
-`marker` SVG) para que se vea igual al exportar.
+`marker` SVG) para que se vea igual al exportar. `drawPitch` también dibuja
+los dos arcos (cajas de 56 x 8 unidades pasada cada línea de fondo), que por
+eso salen en la imagen exportada; en Táctica son solo dibujo (no hay regla de
+gol).
 
 ## Punteros: `onPointerDown` / `onPointerMove` / `finishDrag`
 
