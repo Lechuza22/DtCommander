@@ -90,6 +90,11 @@ flowchart TD
 - **`POSITIONS`** — catálogo de puestos (`Arquera`, `Defensa`,
   `Mediocampo`, `Delantera`) usado en los selects de posición principal y
   secundaria del Evaluador, y para calcular sugerencias en Formación.
+- **`POSITION_KEY_ATTRS`** / **`OFF_POSITION_WEIGHT`** — los 5 atributos
+  principales de cada puesto y cuánto pesan los demás (0,5) en el promedio de
+  la jugadora; ver `average` en la solapa Jugadora. Si se agrega un puesto a
+  `POSITIONS`, hay que sumarlo también acá (sin entrada, ese puesto usa el
+  promedio general).
 - **`FORMATION_PRESETS`** — coordenadas por defecto de cada slot para las
   tres formaciones tácticas (`2-3-2`, `3-2-2`, `2-2-3`), más una cuarta
   entrada `'Libre'` con array vacío: no tiene posiciones por defecto, así
@@ -344,20 +349,38 @@ Pestaña puramente de consulta: no tiene ningún control que modifique
 `player.attrs` o `player.history` — todo eso pasa en Evaluador. Sirve
 para ver el progreso de una jugadora en el tiempo.
 
-### `average(attrs, player)` / `playsGoalkeeper(player)` / `readableTextColor(hex)`
+### `average(attrs, player)` / `attrWeights(player)` / `ratingRuleText(player)`
 
-`average` devuelve el promedio de los atributos guardados (1-10) y es
-la única fuente del "promedio" en la app: la insignia de la jugadora, el
-gráfico de tendencia y cada fila del historial la usan. **Portería solo
-cuenta si la jugadora ataja** (`playsGoalkeeper`: Arquera como posición
-principal o secundaria); para el resto promedia los otros diez atributos.
-Es un promedio general, no ponderado por puesto. La razón: casi todas las
-que no atajan tienen 1 o 2 en Portería, y con los once atributos eso les
-bajaba unos 4 puntos (en la escala 1-100) y a varias las dejaba un color
-más abajo sin decir nada de cómo juegan. Como el historial guarda solo
-atributos, sus promedios se calculan con las posiciones **actuales** de la
-jugadora. `readableTextColor` elige texto blanco u oscuro según el mayor
-contraste sobre un fondo `#rrggbb` (lo usa la insignia).
+`average` devuelve el promedio **ponderado por puesto** de los atributos
+guardados (1-10) y es la única fuente del "promedio" en la app: la insignia
+de la jugadora, el gráfico de tendencia y cada fila del historial la usan.
+Los pesos salen de `attrWeights`, según el puesto **principal**:
+
+- los 5 atributos principales del puesto (`POSITION_KEY_ATTRS`) pesan 1
+  (Arquera: Portería, Visión, Posicionamiento, Mentalidad, Pegada; Defensa:
+  Defensa, Posicionamiento, Cabeceo, Velocidad, Mentalidad; Mediocampo:
+  Técnica, Pegada, Visión, Posicionamiento, Mentalidad; Delantera: Ataque,
+  Regate, Velocidad, Pegada, Técnica);
+- los demás pesan `OFF_POSITION_WEIGHT` (0,5), así que una defensora con
+  buen ataque no pierde ese plus, solo pesa menos;
+- **Portería no cuenta** si el puesto principal no es Arquera (casi todas
+  tienen 1 o 2 y les bajaba unos 4 puntos sin decir nada de cómo juegan). Ser
+  arquera de secundaria no alcanza: con una Defensa que ataja de secundaria,
+  Portería no cuenta;
+- **sin puesto principal cargado** vuelve al promedio general: todos pesan
+  igual y Portería solo cuenta si ataja (`playsGoalkeeper`: Arquera como
+  principal o secundaria).
+
+Los atributos y el peso de los demás se cambian en las dos constantes y el
+promedio se ajusta solo. Los valores se eligieron mirando cómo quedaban las 12
+jugadoras: con "los demás cuentan la mitad" los números casi no se mueven
+respecto del promedio general (solo una jugadora cambia de color) y sí se
+reconoce a quien es fuerte en lo suyo. Como el historial guarda solo atributos,
+sus promedios se calculan con el puesto **actual** de la jugadora.
+`ratingRuleText` arma la frase que explica el cálculo de cada jugadora (la de
+la aclaración y el tooltip de la insignia). `readableTextColor` elige texto
+blanco u oscuro según el mayor contraste sobre un fondo `#rrggbb` (lo usa la
+insignia).
 
 ### `setupDashboard()`
 
@@ -390,7 +413,8 @@ escala 1-100) sobre un fondo con el color de la misma escala que los
 atributos (`ATTR_VALUE_COLORS`, la leyenda de "Atributos" sirve para las
 dos). El color se calcula sobre el número **ya redondeado que se ve**, así
 que un 89,6 se muestra 90 y es celeste, no verde oscuro. Debajo de la fila,
-`#dashboardRatingNote` aclara si el promedio incluye o no Portería. Los valores pasan
+`#dashboardRatingNote` explica cómo se calculó (qué atributos cuentan completos
+y si Portería cuenta). Los valores pasan
 por `escapeHtml` antes de entrar a `innerHTML`: el apodo es texto libre
 y la Sheet se puede editar desde afuera de la app, así que sin escapar
 un apodo con etiquetas HTML se ejecutaría en el navegador de quien mira
