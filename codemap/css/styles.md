@@ -54,8 +54,9 @@ sea fácil ubicar qué tocar.
   `.training-log-notes` (observaciones de cada fila del historial).
 - **Jugadora (dashboard)**: `.player-info-row` / `.player-info-item` /
   `.player-info-value` (la tarjeta de datos básicos: etiqueta chica
-  arriba, valor en negrita abajo), `.diff-row` (grilla de 3 columnas: atributo,
-  valor, delta), `.diff-up` / `.diff-down` / `.diff-same` (verde/rojo/gris
+  arriba, valor en negrita abajo), `.diff-grid` (reparte las filas de
+  cambios en columnas de al menos 260px), `.diff-row` (grilla de 3
+  columnas: atributo flexible, valor, delta), `.diff-up` / `.diff-down` / `.diff-same` (verde/rojo/gris
   para el progreso), `.timeline-row` / `.timeline-head` / `.timeline-avg`
   (cada fila del historial), `.btn-small` (el botón "Eliminar" de una
   fila), `.chart-wrap` (contenedor de alto fijo para que
@@ -69,6 +70,8 @@ sea fácil ubicar qué tocar.
 - **`@media (max-width: 640px)`**: ajustes responsive — la grilla de
   Formación pasa a una columna y la lista de disponibles se vuelve
   horizontal, pensado para usar la app desde el celular en la cancha.
+  También reduce el padding y la fuente de `.tab-btn` para que las 4
+  solapas entren sin scroll horizontal en 360px o más.
 
 ## Dependencias externas
 
