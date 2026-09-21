@@ -910,7 +910,7 @@ function renderDashboardDiff(player, history) {
   }).join('');
   container.innerHTML = `
     <p class="hint">Comparado con "${last.label || 'sin etiqueta'}" (${formatDateDisplay(last.date)})</p>
-    ${rows}`;
+    <div class="diff-grid">${rows}</div>`;
 }
 
 // Línea de tiempo del promedio general: un punto por evaluación guardada,
