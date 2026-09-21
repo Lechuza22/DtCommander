@@ -2,7 +2,7 @@
 
 La pestaña **Secuencia**: una jugada **grabada moviendo las piezas**. Es la
 segunda forma de armar una jugada animada, al lado de
-[Simulación](simulacion.md) (fases con acciones). Acá no hay fases: se arma
+[Simulación](simulacion.md) (una foto por fase). Acá no hay fases: se arma
 cómo arranca la jugada (**1. Armar**) y después se graba arrastrando las
 fichas y la pelota (**2. Grabar**). Cada arrastre queda como un
 **movimiento**, dibujado en la cancha con su flecha y el número de su paso, y
@@ -84,9 +84,12 @@ flowchart TD
   (Ramer–Douglas–Peucker, ver [[simplificación de trazos]]) y queda como un
   movimiento. Un arrastre de menos de 6 unidades se ignora (es un toque).
   - La pelota soltada cerca de una jugadora es un **pase** a ella; soltada en
-    la boca del arco es un **tiro**; en cualquier otro lugar, un pase a la zona.
-    El tipo se cambia después en la tabla (`setKind`): al elegir tiro o gol la
-    pelota va al arco.
+    la boca del arco es un **tiro**; soltada adentro del arco es un **gol**
+    (`ballLanding`, ver [Arcos y gol](#arcos-y-gol)); en cualquier otro lugar,
+    un pase a la zona. El tipo se cambia después en la tabla (`setKind`): al
+    elegir tiro o gol la pelota va al arco (a la boca o adentro) y al elegir un
+    pase, un centro o un pase por arriba con la pelota hoy en el arco, el
+    destino sale del arco (`setKind`).
   - Una misma pieza no puede moverse dos veces en un paso: el nuevo reemplaza.
   - El **cursor** (Inicio, 1, 2...) elige en qué momento se mira y se graba:
     "Paso nuevo" inserta un paso justo después del cursor y "Mismo paso" lo suma
@@ -120,15 +123,41 @@ del paso, el cartel de gol y la grilla. El selector "Flechas" elige qué
 recorridos mostrar: solo el paso actual, hasta este paso (los anteriores tenues)
 o todos, como un diagrama de la jugada con los pasos numerados.
 
+## Arcos y gol
+
+La cancha tiene un arco arriba y otro abajo (dibujados por
+[simulacion-media.js](simulacion-media.md)). **Si la pelota termina adentro de
+un arco (`M.goalSide`), es gol y la jugada termina.**
+
+- **`goalStep(S)`**: el primer paso en que la pelota (con su posición ya
+  derivada) está adentro de un arco; 0 si nunca. **`stepsToPlay(S)`**: hasta
+  qué paso se reproduce: el del gol, o el último.
+- **Grabar después del gol se bloquea** (`recordMove`): con el cursor sobre el
+  paso del gol o más adelante, un "Paso nuevo" avisa "La jugada terminó en gol
+  (paso N)" y no graba. Sí se puede grabar antes del gol (el gol pasa a ser el
+  paso siguiente) o quitar el movimiento del gol.
+- **Cartel**: `goalFlashFor` pone "¡GOL!" y "FIN" en el lugar más despejado
+  (`roomiestPoint`) en el paso del gol, tanto en la cancha de edición como en
+  la reproducción y el video.
+- **Tabla y pestañas**: el movimiento de pelota dice "Gol" (`describeMove`), el
+  título del paso suma "¡Gol! Fin", y los pasos que quedaran después del gol
+  (guardados antes de esta regla) llevan la clase `after-goal`: la tarjeta se
+  ve atenuada y su pestaña del cursor, tachada. No se reproducen.
+- **Reproducción**: `timeline()` se corta en `stepsToPlay()` y el paso del gol
+  se sostiene 1,8 s para ver el cartel; el subtítulo dice "¡Gol! Fin".
+- **Jugadas de ejemplo**: "Ataque desde medio campo" y "Pase de delantera"
+  terminan en gol; "Jugada de pared" termina en tiro afuera del arco.
+
 ## Reproducir: `timeline` / `frameAt` / `moveFrame`
 
 La línea de tiempo es: el arranque (0,9 s), y por cada paso su movimiento (`dur`)
-y una pausa (0,4 s, o 1,6 s si el paso tiene texto). En un paso, `moveFrame`
+y una pausa (0,4 s, o 1,6 s si el paso tiene texto), hasta el paso del gol si
+lo hay. En un paso, `moveFrame`
 lleva cada pieza por su camino: la posición es el punto que corresponde a la
 fracción recorrida del **largo del camino** (`M.pointAlong`), con una curva
 suave, así una curva grabada se anima como curva. La pelota por arriba sube y baja
-(`_h`), el tiro sale rápido y el "¡GOL!" aparece al final del paso, en el lugar más
-despejado (`roomiestPoint`). Los recorridos van creciendo con la pieza.
+(`_h`), el tiro sale rápido y el "¡GOL!" con el "FIN" aparecen al final del paso, en el
+lugar más despejado (`roomiestPoint`). Los recorridos van creciendo con la pieza.
 
 ## Jugadas de ejemplo: `boardFromTemplate`
 
