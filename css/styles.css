@@ -576,6 +576,104 @@ input[type="range"] { width: 100%; }
   pointer-events: none;
 }
 
+/* ===== Táctica ===== */
+.btn:disabled { opacity: 0.5; cursor: default; }
+
+.tactic-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 1rem;
+}
+
+.tactic-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.tool-btn {
+  padding: 0.4rem 0.7rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--primary-dark);
+  font-size: 13px;
+  cursor: pointer;
+}
+.tool-btn:hover:not(:disabled) { background: var(--bg); }
+/* Más específico que :hover, si no en el celular (hover "pegado" tras el toque) el activo queda con letra blanca sobre fondo claro. */
+.tool-btn.active,
+.tool-btn.active:hover:not(:disabled) { background: var(--primary); border-color: var(--primary); color: #fff; }
+.tool-btn:disabled { opacity: 0.45; cursor: default; }
+
+.swatch {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px var(--border);
+  cursor: pointer;
+}
+.swatch.active { box-shadow: 0 0 0 3px var(--primary-dark); }
+
+.tactic-check {
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 13px;
+  color: #556;
+}
+
+.tactic-options {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+.tactic-palette {
+  display: flex;
+  gap: 0.4rem;
+}
+.tactic-text-row { flex: 1 1 100%; }
+.tactic-hint { margin: -0.4rem 0 1.25rem; }
+
+.tactic-text-input {
+  flex: 1;
+  min-width: 140px;
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.tactic-team-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.9rem 0;
+}
+.tactic-team-actions .btn { padding: 0.4rem 0.7rem; font-size: 13px; }
+
+/* overflow visible: al arrastrar una jugadora fuera de la cancha (para sacarla)
+   la ficha sigue al cursor en vez de quedar recortada en el borde del dibujo. */
+#tacticField {
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+#tacticField.tool-move .t-item { cursor: grab; }
+#tacticField.tool-arrow,
+#tacticField.tool-pencil,
+#tacticField.tool-text,
+#tacticField.tool-ball { cursor: crosshair; }
+#tacticField.tool-erase .t-item { cursor: pointer; }
+
 @media (max-width: 640px) {
   /* En celular el panel de la jugadora que se está mirando flota arriba a la
      derecha en vez de empujar la cancha hacia abajo: si la cancha se moviera
@@ -600,5 +698,32 @@ input[type="range"] { width: 100%; }
   .attrs-chart-layout { grid-template-columns: 1fr; }
   .available-list { flex-direction: row; flex-wrap: wrap; }
   .slider-group { grid-template-columns: 110px 1fr 28px; }
-  .tab-btn { padding: 0.9rem 0.25rem; font-size: 14px; }
+  /* Con 5 solapas no entran todas en 360px: la barra se desplaza a los costados. */
+  .tabs { overflow-x: auto; justify-content: flex-start; scrollbar-width: none; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab-btn { flex: 1 0 auto; padding: 0.9rem 0.6rem; font-size: 13px; white-space: nowrap; }
+
+  /* Táctica en celular: barra compacta (cada fila se desliza de costado) y fija
+     arriba, así se puede cambiar de herramienta sin volver a subir hasta ella. */
+  .tactic-tools-card {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    padding: 0.55rem 0.7rem;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+  }
+  .tactic-toolbar { gap: 0.4rem; }
+  .tactic-toolbar > .tactic-group,
+  .tactic-toolbar > .tactic-options {
+    flex-wrap: nowrap;
+    width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding: 2px;
+  }
+  .tactic-toolbar > .tactic-group::-webkit-scrollbar,
+  .tactic-toolbar > .tactic-options::-webkit-scrollbar { display: none; }
+  .tool-btn { flex: 0 0 auto; padding: 0.4rem 0.55rem; font-size: 12px; white-space: nowrap; }
+  .swatch { flex: 0 0 auto; }
+  .tactic-hint { margin-top: 0; }
 }
