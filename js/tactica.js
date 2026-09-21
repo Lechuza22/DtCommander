@@ -19,7 +19,9 @@
   const FIELD_LINE = 'rgba(255,255,255,0.67)';
   const TEAM_COLOR = '#2563eb';
   const RIVAL_COLOR = '#dc2626';
-  const TOKEN_R = 14;
+  // Fichas al 80% del tamaño original (14): eran grandes para la cancha. El área de toque no se achicó.
+  const TOKEN_R = 11.2;
+  const TOKEN_HIT_R = 14;
   const MAX_RIVALS = 11;
   const MAX_UNDO = 60;
   const DRAFT_KEY = 'dtcomander_tactic_draft';
@@ -141,18 +143,20 @@
         'stroke-dasharray': '4 3', 'pointer-events': 'none'
       }, g);
     }
+    svgEl('circle', { r: TOKEN_HIT_R, fill: 'transparent' }, g);
     svgEl('circle', {
-      r: TOKEN_R, fill: isRival ? RIVAL_COLOR : TEAM_COLOR, stroke: '#ffffff', 'stroke-width': 2
+      r: TOKEN_R, fill: isRival ? RIVAL_COLOR : TEAM_COLOR, stroke: '#ffffff', 'stroke-width': 1.6,
+      'pointer-events': 'none'
     }, g);
     const inner = svgEl('text', {
-      'text-anchor': 'middle', dy: 4, fill: '#ffffff', 'font-size': 12, 'font-weight': 700,
+      'text-anchor': 'middle', dy: 3.3, fill: '#ffffff', 'font-size': 9.6, 'font-weight': 700,
       'font-family': FONT, 'pointer-events': 'none'
     }, g);
     inner.textContent = isRival ? item.label : (item.name || '?').charAt(0).toUpperCase();
     if (!isRival) {
       const name = item.name || '';
       haloText(g, name.length > 11 ? name.slice(0, 10) + '…' : name, {
-        y: TOKEN_R + 12, fill: '#ffffff', 'font-size': 9.5
+        y: TOKEN_R + 10.5, fill: '#ffffff', 'font-size': 8.5
       });
     }
   }
