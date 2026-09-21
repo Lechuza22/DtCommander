@@ -25,6 +25,7 @@ sea fácil ubicar qué tocar.
   completa que tapa todo), `.login-card` (el formulario en sí),
   `.btn-logout` (botón ⏻ en el header) — ver
   [js/auth.md](../js/auth.md).
+- **Desplegables de guardados**: `.roster-controls select` y `.formation-controls select` llevan `min-width: 0; max-width: 100%`. Sin eso, un nombre largo (por ejemplo una simulación "Transición: Ataque desde arco (8 fases) — 21/09/2026") estiraba el `<select>` más allá del ancho de la pantalla y la página se desplazaba de costado en el celular (bug real que hubo).
 - **Evaluador**: `.roster-controls`, `.position-controls` (fila flex con
   wrap para los seis campos de "Datos de la jugadora": apodo, edad,
   altura, pie dominante y las dos posiciones — entran en una fila en
