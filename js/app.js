@@ -411,16 +411,24 @@ function mergeTactics(localList, remoteList) {
 // Una simulación es una jugada animada en fases: { id, name, createdAt,
 // updatedAt, deleted, items[] }. Los items son una lista plana (así entra tal
 // cual en la hoja "Simulaciones", que tiene el mismo formato que "Tacticas"):
-//   { type: 'phase', ph, name, note, dur }  una por fase; dur = segundos que
-//                                           dura la transición HACIA esa fase
-//   { type: 'player' | 'rival' | 'ball', ph, x, y, ... }  lo que hay en cada fase
-const SIM_ITEM_TYPES = ['phase', 'player', 'rival', 'ball'];
+//   { type: 'phase', ph, name, note, dur, seq }  una por fase; dur = segundos que
+//        dura la transición HACIA esa fase; seq = las acciones van una tras otra
+//   { type: 'player' | 'rival' | 'ball', ph, x, y, ... }  las piezas de cada fase
+//   { type: 'text', ph, x, y, text, color }               un cuadro de texto en esa fase
+//   { type: 'zone', ph, zc, zr, color }                   un casillero sombreado (col 0-2, fila 1-4 desde el arco propio)
+//   { type: 'action', ph, who, act, ... }                 una acción de la transición HACIA la fase ph
+const SIM_ITEM_TYPES = ['phase', 'player', 'rival', 'ball', 'text', 'zone', 'action'];
+const SIM_ACTIONS = ['move', 'goto', 'press', 'mark', 'pass', 'cross', 'lob', 'space', 'shot', 'goal'];
+const SIM_DIRS = ['up', 'down', 'left', 'right', 'upleft', 'upright', 'downleft', 'downright'];
+const SIM_SIDES = ['left', 'center', 'right'];
 const MAX_SIM_PHASES = 12;
 const SIM_DEFAULT_DUR = 2;
 
 function sanitizeSimItems(items) {
   if (!Array.isArray(items)) return [];
   const num = v => (v !== '' && v !== null && Number.isFinite(Number(v))) ? Number(v) : null;
+  const hex = (v, fallback) => (typeof v === 'string' && /^#[0-9a-fA-F]{3,8}$/.test(v)) ? v : fallback;
+  const key = v => (typeof v === 'string' ? v.slice(0, 40) : '');
   const out = [];
   items.forEach((raw, idx) => {
     if (!raw || !SIM_ITEM_TYPES.includes(raw.type)) return;
@@ -433,7 +441,29 @@ function sanitizeSimItems(items) {
         ...base,
         name: String(raw.name || '').slice(0, 40),
         note: String(raw.note || '').slice(0, 140),
-        dur: dur === null ? SIM_DEFAULT_DUR : Math.min(6, Math.max(0.5, dur))
+        dur: dur === null ? SIM_DEFAULT_DUR : Math.min(6, Math.max(0.5, dur)),
+        seq: raw.seq === true || raw.seq === 'true'
+      });
+      return;
+    }
+    if (raw.type === 'zone') {
+      const zc = num(raw.zc), zr = num(raw.zr);
+      if (zc === null || zr === null || zc < 0 || zc > 2 || zr < 1 || zr > 4) return;
+      out.push({ ...base, zc: Math.floor(zc), zr: Math.floor(zr), color: hex(raw.color, '#facc15') });
+      return;
+    }
+    if (raw.type === 'action') {
+      if (!SIM_ACTIONS.includes(raw.act) || !key(raw.who)) return;
+      const n = num(raw.n);
+      out.push({
+        ...base,
+        who: key(raw.who),
+        act: raw.act,
+        dir: SIM_DIRS.includes(raw.dir) ? raw.dir : '',
+        n: n === null ? 1 : Math.min(3, Math.max(1, Math.floor(n))),
+        zone: /^[A-C][1-4]$/.test(raw.zone) ? raw.zone : '',
+        target: key(raw.target),
+        side: SIM_SIDES.includes(raw.side) ? raw.side : 'center'
       });
       return;
     }
@@ -443,6 +473,7 @@ function sanitizeSimItems(items) {
     if (raw.type === 'player') item.name = String(raw.name || '').slice(0, 40);
     if (raw.type === 'rival') item.label = String(raw.label || '').slice(0, 3);
     if (raw.type === 'ball') item.carrier = typeof raw.carrier === 'string' ? raw.carrier.slice(0, 50) : '';
+    if (raw.type === 'text') { item.text = String(raw.text || '').slice(0, 60); item.color = hex(raw.color, '#ffffff'); }
     out.push(item);
   });
   return out;
