@@ -347,9 +347,15 @@ input[type="range"] { width: 100%; }
   font-weight: 600;
 }
 
+.diff-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  column-gap: 2rem;
+}
+
 .diff-row {
   display: grid;
-  grid-template-columns: 140px 60px 70px;
+  grid-template-columns: 1fr 60px 70px;
   align-items: center;
   gap: 0.5rem;
   padding: 0.35rem 0;
@@ -594,4 +600,5 @@ input[type="range"] { width: 100%; }
   .attrs-chart-layout { grid-template-columns: 1fr; }
   .available-list { flex-direction: row; flex-wrap: wrap; }
   .slider-group { grid-template-columns: 110px 1fr 28px; }
+  .tab-btn { padding: 0.9rem 0.25rem; font-size: 14px; }
 }
