@@ -3,7 +3,8 @@
 Es el cerebro de la aplicación: define la configuración editable (atributos,
 posiciones, formaciones, planes, sugerencias y rúbrica de entrenamiento),
 guarda todo el estado en memoria y en `localStorage`, y renderiza las
-cuatro pestañas: Evaluador (sliders + radar chart, uno al lado del otro),
+cuatro pestañas propias (la quinta, Táctica, vive en
+[js/tactica.js](tactica.md)): Evaluador (sliders + radar chart, uno al lado del otro),
 Jugadora (dashboard de solo lectura con el progreso en el tiempo),
 Formación (historial de Partidos → Plan A/B/C → forma táctica → campo SVG
 con arrastrar-y-soltar y sugerencias de alternativas) y Entrenamiento
@@ -31,14 +32,17 @@ flowchart TD
     DOMLoad --> setupEvaluador
     DOMLoad --> setupFormacion
     DOMLoad --> setupDashboard
+    DOMLoad --> setupTactica["setupTactica() (js/tactica.js)"]
     DOMLoad --> renderAll
     DOMLoad --> Hydrate["window.SheetsSync.hydrate()"]
     Hydrate -->|hay datos remotos| normalizeRemoteState --> renderAll
+    normalizeRemoteState --> mergeTactics
 
     renderAll --> renderPlayerSelect
     renderAll --> renderEvaluador
     renderAll --> renderFormacion
     renderAll --> renderDashboard
+    renderAll --> renderTactica["renderTactica() (js/tactica.js)"]
 
     setupEvaluador -->|slider input| updateRadarChart
     setupEvaluador -->|slider input| saveState
@@ -108,6 +112,33 @@ que la forma del objeto viva en un solo lugar. Como las jugadoras que
 vienen de la Sheet pueden no traer los campos nuevos (datos cargados
 antes de que existieran), todo el código que los lee usa `|| ''` en
 vez de asumir que están.
+
+### Tácticas: `state.tactics` / `sanitizeTacticItems` / `sanitizeTactic` / `sanitizeTactics` / `mergeTactics`
+
+`state` ahora tiene una quinta clave, `tactics`: la lista de tácticas
+guardadas de la pestaña Táctica (`{ id, name, createdAt, updatedAt,
+deleted, items[] }`; el detalle de los `items` está en
+[js/tactica.js](tactica.md)). La UI vive en ese archivo; acá queda solo la
+capa de datos, para que la sincronización siga funcionando aunque el
+tablero no cargara.
+
+- **`sanitizeTacticItems(items)` / `sanitizeTactic(raw)` /
+  `sanitizeTactics(list)`**: todo lo que llega de afuera (`localStorage`
+  o la Sheet) pasa por acá. Descartan elementos con tipo desconocido o
+  números inválidos, recortan textos y validan el color (`#rgb`...), así un
+  dato roto se ignora en vez de romper el tablero. `deleted` acepta
+  `true`, `'true'` o `'si'` (así lo guarda la Sheet).
+- **`mergeTactics(local, remote)`**: une ambas listas táctica por
+  táctica y gana la de `updatedAt` más nuevo (ver
+  [[eliminación blanda (soft delete)]]). Es la excepción a la regla del
+  resto del estado ("si la Sheet tiene datos, pisa lo local"), porque acá
+  pisar perdería trabajo: una táctica hecha sin conexión, o antes de
+  actualizar el Apps Script (que hasta entonces ni devuelve `tactics`).
+  `normalizeRemoteState` la usa con `state.tactics` (todavía el local, ya
+  que el reemplazo ocurre después de devolver).
+- `defaultState()` arranca con `tactics: []` y `loadLocal()` sanea las
+  que haya en `localStorage`, así un estado guardado antes de existir la
+  pestaña carga igual.
 
 ### `SCORE_SCALE` / `toScore(raw)` / `formatScore(score)` / `formatAttrValue(raw)`
 
@@ -198,9 +229,12 @@ la pestaña Formación sin nada que mostrar.
 
 ### `setupTabs()`
 
-Cablea los botones `.tab-btn` (Evaluador / Formación, la navegación de
-más arriba — no confundir con las solapas de Plan A/B/C, que son
-internas a Formación).
+Cablea los botones `.tab-btn` (Evaluador / Jugadora / Formación /
+Táctica / Entrenamiento, la navegación de más arriba — no confundir con
+las solapas de Plan A/B/C, que son internas a Formación). Al pasar a
+Táctica llama a `renderTactica()`, y al elegir cualquier solapa la deja
+visible con `scrollIntoView` (con 5 solapas la barra se desplaza a los
+costados en pantallas de menos de ~420px).
 
 ## Evaluador
 
