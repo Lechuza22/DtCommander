@@ -674,6 +674,97 @@ input[type="range"] { width: 100%; }
 #tacticField.tool-ball { cursor: crosshair; }
 #tacticField.tool-erase .t-item { cursor: pointer; }
 
+/* ===== Simulación ===== */
+#simField {
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+#simField .t-item { cursor: grab; }
+#panel-simulacion.sim-playing #simField .t-item { cursor: default; }
+#panel-simulacion.sim-playing .available-panel { opacity: 0.55; pointer-events: none; }
+
+/* Sin min-width: 0 una columna de la grilla no se achica por debajo de su contenido:
+   la fila de pestañas de fase (que se desliza de costado) ensanchaba toda la página. */
+.field-layout > .card { min-width: 0; }
+.sim-panel { min-width: 0; }
+
+.sim-start { display: flex; flex-direction: column; gap: 0.6rem; }
+.sim-start-row { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; }
+.sim-start-row select { flex: 1; min-width: 200px; }
+
+.sim-selbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  padding: 0.5rem 0.6rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.sim-sellabel { font-weight: 600; font-size: 13px; color: var(--primary-dark); margin-right: 0.3rem; }
+
+.sim-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-top: 0.9rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--border);
+}
+
+.phase-tabs { display: flex; gap: 0.4rem; overflow-x: auto; padding: 2px; scrollbar-width: thin; }
+.phase-tab {
+  flex: 0 0 auto;
+  max-width: 11rem;
+  padding: 0.4rem 0.7rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--primary-dark);
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.phase-tab:hover:not(:disabled) { background: var(--bg); }
+.phase-tab.active,
+.phase-tab.active:hover:not(:disabled) { background: var(--primary); border-color: var(--primary); color: #fff; }
+.phase-tab:disabled { opacity: 0.5; cursor: default; }
+
+.sim-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+.sim-play input[type="range"] { flex: 1; min-width: 120px; }
+.sim-options { gap: 0.4rem 1rem; }
+
+.sim-note {
+  padding: 0.5rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  font-size: 13px;
+  font-family: inherit;
+  resize: vertical;
+}
+.sim-dur { display: flex; flex-direction: column; gap: 0.25rem; font-size: 13px; color: #556; }
+.sim-dur input[type="range"] { width: 100%; }
+.sim-caption {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: 8px;
+  background: var(--primary-dark);
+  color: #fff;
+  font-size: 13px;
+}
+.sim-caption strong { font-size: 15px; }
+.sim-caption span { color: #dbe4f0; }
+
 @media (max-width: 640px) {
   /* En celular el panel de la jugadora que se está mirando flota arriba a la
      derecha en vez de empujar la cancha hacia abajo: si la cancha se moviera
