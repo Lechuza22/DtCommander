@@ -28,43 +28,10 @@
   const TRAIL_MIN = 8;
   const SNAP_DIST = 20;
   const TRAIL_COLORS = { player: '#ffffff', rival: '#fca5a5' };
-  // Color de la flecha de la pelota según cómo viaja: por el piso, por arriba o de tiro
-  const BALL_TRAIL = { ground: '#facc15', air: '#7dd3fc', shot: '#fb923c' };
   const ZONE_COLORS = [
     { name: 'Amarillo', value: '#facc15' }, { name: 'Rojo', value: '#ef4444' },
     { name: 'Celeste', value: '#22d3ee' }, { name: 'Blanco', value: '#ffffff' }
   ];
-
-  // ------------------------------------------------------------------
-  // Acciones de una transición
-  // ------------------------------------------------------------------
-  // Una acción mueve UNA pieza de la fase anterior a la actual (avanzar 2
-  // casilleros, pase a Agos, tiro al arco...). La app calcula el destino y lo
-  // escribe en la fase actual; después se puede ajustar arrastrando (eso quita
-  // la acción, porque la pieza ya no está donde ella la dejó).
-  const DIR_VEC = {
-    up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0],
-    upleft: [-1, -1], upright: [1, -1], downleft: [-1, 1], downright: [1, 1]
-  };
-  const MOVE_LABELS = {
-    up: 'Avanzar (atacar)', down: 'Retroceder (defender)', left: 'Ir a la izquierda', right: 'Ir a la derecha',
-    upleft: 'Avanzar por la izquierda', upright: 'Avanzar por la derecha',
-    downleft: 'Retroceder por la izquierda', downright: 'Retroceder por la derecha'
-  };
-  const MOVE_VERBS = {
-    up: 'avanza', down: 'retrocede', left: 'va a la izquierda', right: 'va a la derecha',
-    upleft: 'avanza por la izquierda', upright: 'avanza por la derecha',
-    downleft: 'retrocede por la izquierda', downright: 'retrocede por la derecha'
-  };
-  const TOKEN_ACTS = Object.keys(MOVE_LABELS).concat(['goto', 'press', 'mark']);
-  const BALL_ACTS = ['pass', 'cross', 'lob', 'space', 'shot', 'goal'];
-  const ACT_LABELS = Object.assign({}, MOVE_LABELS, {
-    goto: 'Ir a la zona…', press: 'Presionar a…', mark: 'Marcar a…',
-    pass: 'Pase a…', cross: 'Centro a…', lob: 'Pase por arriba a…', space: 'Pelota al espacio (zona)…',
-    shot: 'Tiro al arco', goal: 'Gol'
-  });
-  const SIDE_LABELS = { left: 'palo izquierdo', center: 'al medio', right: 'palo derecho' };
-  const ZONE_BAND = { 1: 'Defensa baja', 2: 'Defensa alta', 3: 'Ataque bajo', 4: 'Ataque alto' };
 
   // ------------------------------------------------------------------
   // Jugadas de ejemplo. Arrancan de una formación 2-3-2 propia (abajo, atacando
@@ -205,7 +172,7 @@
   const lerp = (a, b, t) => a + (b - a) * t;
   const ease = p => (p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2);
   const newId = () => 'i' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-  const newPhase = () => ({ name: '', note: '', dur: SIM_DEFAULT_DUR, seq: false });
+  const newPhase = () => ({ name: '', note: '', dur: SIM_DEFAULT_DUR });
   const isToken = i => i.type === 'player' || i.type === 'rival';
   const isMovable = i => i.type === 'player' || i.type === 'rival' || i.type === 'ball';
   const keyOf = i => (i.type === 'player' ? 'p:' + i.name : i.type === 'rival' ? 'r:' + i.label : i.type === 'ball' ? 'b:ball' : null);
@@ -235,50 +202,12 @@
       .sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
   }
 
-  const actionsOf = ph => board.items.filter(i => i.type === 'action' && i.ph === ph);
-
   // ---- Grilla de casilleros (A-C de izquierda a derecha, 1-4 desde el arco propio)
-  const parseZone = z => (/^[A-C][1-4]$/.test(z || '') ? { c: 'ABC'.indexOf(z.charAt(0)), r: Number(z.charAt(1)) } : null);
-  const zoneName = (c, r) => M.cellName(c, r);
-  function cellCenter(c, r) {
-    const rect = M.cellRect(c, r);
-    return { x: rect.x + rect.w / 2, y: rect.y + rect.h / 2 };
-  }
   function cellAt(x, y) {
     const c = clamp(Math.floor((x - G.x0) / G.cw), 0, G.cols - 1);
     const rowFromTop = clamp(Math.floor((y - G.y0) / G.ch), 0, G.rows - 1);
     return { c, r: G.rows - rowFromTop };
   }
-
-  function pieceLabel(key) {
-    if (key === 'b:ball') return 'Pelota';
-    if (key.startsWith('p:')) return key.slice(2);
-    if (key.startsWith('r:')) return 'Rival ' + key.slice(2);
-    if (key.startsWith('z:')) return 'Zona ' + key.slice(2);
-    return key;
-  }
-
-  function describeAction(a) {
-    const who = pieceLabel(a.who);
-    const plural = a.n === 1 ? 'casillero' : 'casilleros';
-    switch (a.act) {
-      case 'move': return `${who} ${MOVE_VERBS[a.dir] || 'se mueve'} ${a.n} ${plural}`;
-      case 'goto': return `${who} va a la zona ${a.zone}`;
-      case 'press': return `${who} presiona a ${pieceLabel(a.target)}`;
-      case 'mark': return `${who} marca a ${pieceLabel(a.target)}`;
-      case 'pass': return `Pelota: pase a ${pieceLabel(a.target)}`;
-      case 'cross': return `Pelota: centro a ${pieceLabel(a.target)}`;
-      case 'lob': return `Pelota: pase por arriba a ${pieceLabel(a.target)}`;
-      case 'space': return `Pelota: al espacio, zona ${a.zone}`;
-      case 'shot': return `Pelota: tiro al arco (${SIDE_LABELS[a.side] || 'al medio'})`;
-      case 'goal': return `Pelota: gol (${SIDE_LABELS[a.side] || 'al medio'})`;
-      default: return who;
-    }
-  }
-
-  // Cómo viaja la pelota según la acción: por el piso, por el aire o de tiro.
-  const ballStyleOf = act => (act === 'cross' || act === 'lob' ? 'air' : (act === 'shot' || act === 'goal' ? 'shot' : 'ground'));
-  const easeShot = p => 1 - Math.pow(1 - p, 2);
 
   // ------------------------------------------------------------------
   // Lo que se ve en cada fase (y entre fases)
@@ -286,7 +215,7 @@
   // La pelota "pegada" a una jugadora no guarda su propia posición como verdad:
   // se calcula a partir de quien la lleva, así siempre la acompaña.
   function resolvedPhase(ph) {
-    const items = phaseItems(ph).filter(i => i.type !== 'action').map(clone);
+    const items = phaseItems(ph).map(clone);
     const tokens = new Map(items.filter(isToken).map(i => [keyOf(i), i]));
     items.forEach(i => {
       if (i.type !== 'ball' || !i.carrier) return;
@@ -304,7 +233,6 @@
   // y hace crecer la flecha durante la animación.
   function autoTrails(from, to, progressOf, alpha) {
     const before = new Map(resolvedPhase(from).filter(isMovable).map(i => [keyOf(i), i]));
-    const ballAct = actionsOf(to).find(a => a.who === 'b:ball');
     const out = [];
     resolvedPhase(to).filter(isMovable).forEach(now => {
       const key = keyOf(now);
@@ -321,7 +249,7 @@
       if (headLen < 6) return;
       const ux = dx / dist;
       const uy = dy / dist;
-      const color = now.type === 'ball' ? BALL_TRAIL[ballAct ? ballStyleOf(ballAct.act) : 'ground'] : TRAIL_COLORS[now.type];
+      const color = now.type === 'ball' ? '#facc15' : TRAIL_COLORS[now.type];
       out.push({
         id: 'auto:' + key + ':' + to, type: 'arrow', _auto: true,
         x1: prev.x, y1: prev.y, x2: round1(prev.x + ux * headLen), y2: round1(prev.y + uy * headLen),
@@ -356,11 +284,34 @@
     return best || fallback;
   }
 
-  // El "¡GOL!" grande que aparece cuando la transición termina en gol, donde no tape a nadie.
+  // ------------------------------------------------------------------
+  // Arcos: si la pelota entra a uno, es gol y la jugada termina (FIN)
+  // ------------------------------------------------------------------
+  function ballInGoal(ph) {
+    const ball = resolvedPhase(ph).find(i => i.type === 'ball');
+    return !!ball && !!M.goalSide(ball.x, ball.y);
+  }
+
+  // Primera fase en la que la pelota está adentro de un arco (-1 si nunca entra).
+  function goalPhase() {
+    for (let i = 0; i < board.phases.length; i++) if (ballInGoal(i)) return i;
+    return -1;
+  }
+
+  // Última fase que se reproduce: la del gol o, si no hay gol, la última.
+  function lastPhase() {
+    const g = goalPhase();
+    return g >= 0 ? g : board.phases.length - 1;
+  }
+
+  // "¡GOL!" y "FIN", en el lugar más despejado de la cancha para no tapar a nadie.
   function goalFlash(ph, alpha) {
-    if (!actionsOf(ph).some(a => a.act === 'goal')) return [];
-    const spot = roomiestPoint(ph, 84, 30, 150, 110);
-    return [{ id: 'goal-flash', type: 'text', _auto: true, big: true, x: spot.x, y: spot.y + 9, text: '¡GOL!', color: '#facc15', _o: alpha }];
+    if (ph !== goalPhase()) return [];
+    const spot = roomiestPoint(ph, 84, 60, 150, 110);
+    return [
+      { id: 'goal-flash', type: 'text', _auto: true, big: true, x: spot.x, y: spot.y - 2, text: '¡GOL!', color: '#facc15', _o: alpha },
+      { id: 'fin-flash', type: 'text', _auto: true, big: true, x: spot.x, y: spot.y + 28, text: 'FIN', color: '#ffffff', _o: alpha }
+    ];
   }
 
   const gridItems = () => ((showGrid || (mode === 'edit' && simTool === 'zone')) ? [{ id: 'grid', type: 'grid', _auto: true }] : []);
@@ -371,23 +322,10 @@
     return items.concat(goalFlash(ph, 1), gridItems());
   }
 
-  // La transición de ph a ph + 1 con progreso p (0-1). Cada pieza se mueve en su
-  // "ventana" de tiempo: toda la transición, o su turno si las acciones van una
-  // tras otra. La pelota por arriba sube y baja (_h); el tiro sale rápido.
+  // La transición de ph a ph + 1 con progreso p (0-1): las piezas presentes en las dos
+  // fases se deslizan de un lugar al otro; las que aparecen o desaparecen entran y salen.
   function transitionFrame(ph, p) {
-    const acts = actionsOf(ph + 1);
-    const seq = !!(board.phases[ph + 1] && board.phases[ph + 1].seq) && acts.length > 1;
-    const localP = key => {
-      const idx = acts.findIndex(a => a.who === key);
-      if (idx < 0 || !seq) return p;
-      return clamp01((p - idx / acts.length) / (1 / acts.length));
-    };
-    const styleOf = key => {
-      const a = key === 'b:ball' ? acts.find(x => x.who === key) : null;
-      return a ? ballStyleOf(a.act) : 'ground';
-    };
-    const easedOf = key => (styleOf(key) === 'shot' ? easeShot : ease)(localP(key));
-
+    const e = ease(p);
     const from = resolvedPhase(ph);
     const to = resolvedPhase(ph + 1);
     const fromMov = from.filter(isMovable);
@@ -396,42 +334,39 @@
     const seen = new Set();
     const out = [];
     fromMov.forEach(a => {
-      const key = keyOf(a);
-      const b = toMap.get(key);
+      const b = toMap.get(keyOf(a));
       if (b) {
-        seen.add(key);
-        const e = easedOf(key);
-        const item = Object.assign({}, a, { x: round1(lerp(a.x, b.x, e)), y: round1(lerp(a.y, b.y, e)) });
-        if (styleOf(key) === 'air') item._h = 4 * localP(key) * (1 - localP(key));
-        out.push(item);
+        seen.add(keyOf(a));
+        out.push(Object.assign({}, a, { x: round1(lerp(a.x, b.x, e)), y: round1(lerp(a.y, b.y, e)) }));
       } else {
-        out.push(Object.assign({}, a, { _o: 1 - ease(p) }));
+        out.push(Object.assign({}, a, { _o: 1 - e }));
       }
     });
-    toMov.forEach(b => { if (!seen.has(keyOf(b))) out.push(Object.assign({}, b, { _o: ease(p) })); });
+    toMov.forEach(b => { if (!seen.has(keyOf(b))) out.push(Object.assign({}, b, { _o: e })); });
     // Textos y casilleros: salen los de la fase que termina y entran los de la que llega.
     from.filter(i => !isMovable(i)).forEach(i => out.push(Object.assign({}, i, { _o: 1 - clamp01(p / 0.3) })));
     to.filter(i => !isMovable(i)).forEach(i => out.push(Object.assign({}, i, { _o: clamp01((p - 0.7) / 0.3) })));
     if (autoOn) {
       if (ph > 0) out.push(...autoTrails(ph - 1, ph, () => 1, 1 - clamp01(p / 0.3)));
-      out.push(...autoTrails(ph, ph + 1, easedOf, 1));
+      out.push(...autoTrails(ph, ph + 1, () => e, 1));
     }
-    out.push(...goalFlash(ph, 1 - clamp01(p / 0.3)), ...goalFlash(ph + 1, clamp01((p - 0.8) / 0.2)));
+    out.push(...goalFlash(ph + 1, clamp01((p - 0.8) / 0.2)));
     return out.concat(gridItems());
   }
 
-  const holdMs = ph => (board.phases[ph] && board.phases[ph].note ? HOLD_NOTE_MS : HOLD_MS);
+  // En la fase del gol la pausa es más larga: hay que ver el "¡GOL!" y el "FIN".
+  const holdMs = ph => (board.phases[ph] && board.phases[ph].note ? HOLD_NOTE_MS : HOLD_MS) + (ph === goalPhase() ? 1400 : 0);
   const moveMs = ph => Math.round((board.phases[ph].dur || SIM_DEFAULT_DUR) * 1000);
 
   function totalMs() {
     let t = 0;
-    board.phases.forEach((_, i) => { t += holdMs(i) + (i > 0 ? moveMs(i) : 0); });
+    for (let i = 0; i <= lastPhase(); i++) t += holdMs(i) + (i > 0 ? moveMs(i) : 0);
     return t;
   }
 
   // Estado visual a los t milisegundos (a velocidad 1x) desde el principio.
   function frameAt(t) {
-    const n = board.phases.length;
+    const n = lastPhase() + 1;
     let acc = 0;
     for (let i = 0; i < n; i++) {
       const hold = holdMs(i);
@@ -446,7 +381,8 @@
 
   function captionFor(idx) {
     const p = board.phases[idx] || newPhase();
-    return { title: `${idx + 1}/${board.phases.length} · ${p.name || 'Fase ' + (idx + 1)}`, note: p.note || '' };
+    const end = idx === goalPhase() ? ' · ¡Gol! Fin' : '';
+    return { title: `${idx + 1}/${lastPhase() + 1} · ${p.name || 'Fase ' + (idx + 1)}${end}`, note: p.note || '' };
   }
 
   // ------------------------------------------------------------------
@@ -555,7 +491,6 @@
   function select(id) {
     selectedId = id;
     const item = id ? findItem(id) : null;
-    if (item && isMovable(item)) $('actPiece').value = keyOf(item);
     if (item && item.type === 'text') $('simTextInput').value = item.text;
     renderBoard();
     updateControls();
@@ -564,11 +499,9 @@
   function removeFromPhase(id) {
     const item = findItem(id);
     board.items = board.items.filter(i => !(i.id === id && i.ph === curPhase));
-    if (item && isMovable(item)) {
+    if (item && isToken(item)) {
       const key = keyOf(item);
-      // Las acciones de esta transición que involucraban a la pieza (como protagonista o destino) ya no valen.
-      board.items = board.items.filter(i => !(i.type === 'action' && i.ph === curPhase && (i.who === key || i.target === key)));
-      if (isToken(item)) phaseItems(curPhase).forEach(b => { if (b.type === 'ball' && b.carrier === key) b.carrier = ''; });
+      phaseItems(curPhase).forEach(b => { if (b.type === 'ball' && b.carrier === key) b.carrier = ''; });
     }
     if (selectedId === id) selectedId = null;
   }
@@ -655,11 +588,6 @@
       restore(d.before);
     } else {
       const item = findItem(d.id);
-      if (item && d.moved && isMovable(item)) {
-        // La pieza ya no está donde la dejó su acción: la acción deja de valer.
-        const key = keyOf(item);
-        board.items = board.items.filter(i => !(i.type === 'action' && i.ph === curPhase && i.who === key));
-      }
       if (item && d.moved && item.type !== 'text') {
         if (isToken(item)) {
           if (!isOverBoard(e.clientX, e.clientY)) {
@@ -677,167 +605,6 @@
       }
       commit(d.before);
     }
-    refreshAll();
-  }
-
-  // ------------------------------------------------------------------
-  // Acciones: calcular el destino y escribirlo en la fase actual
-  // ------------------------------------------------------------------
-  const goalPoint = (act, side) => ({ x: THEME.GOAL_X[side] || THEME.GOAL_X.center, y: THEME.GOAL_Y[act] });
-
-  // Un lugar cercano a p que no encime a otra ficha de la fase.
-  function nudgeFree(p, ph, selfKey) {
-    const others = phaseItems(ph).filter(isToken).filter(t => keyOf(t) !== selfKey);
-    const offsets = [[0, 0], [24, 0], [-24, 0], [0, 24], [0, -24], [24, 24], [-24, 24], [24, -24], [-24, -24], [48, 0], [-48, 0]];
-    for (const o of offsets) {
-      const q = clampField({ x: p.x + o[0], y: p.y + o[1] });
-      if (others.every(t => Math.hypot(t.x - q.x, t.y - q.y) >= 26)) return q;
-    }
-    return clampField(p);
-  }
-
-  // Aplica una acción a la fase a.ph tomando como punto de partida la fase anterior.
-  // Devuelve false (sin tocar nada) si falta alguna pieza necesaria.
-  function applyAction(a) {
-    const dstPh = a.ph;
-    if (dstPh < 1) return false;
-    const src = resolvedPhase(dstPh - 1);
-    const dst = phaseItems(dstPh);
-    const dstTokens = dst.filter(isToken);
-    const tokenByKey = key => dstTokens.find(t => keyOf(t) === key);
-
-    if (a.who === 'b:ball') {
-      let dest = null;
-      if (a.act === 'shot' || a.act === 'goal') {
-        const g = goalPoint(a.act, a.side);
-        dest = { carrier: '', x: g.x, y: g.y };
-      } else if (a.act === 'space' || (a.target && a.target.startsWith('z:'))) {
-        const z = parseZone(a.act === 'space' ? a.zone : a.target.slice(2));
-        if (!z) return false;
-        const c = cellCenter(z.c, z.r);
-        dest = { carrier: '', x: c.x, y: c.y };
-      } else {
-        const holder = tokenByKey(a.target);
-        if (!holder) return false;
-        dest = { carrier: a.target, x: holder.x + THEME.BALL_DX, y: holder.y + THEME.BALL_DY };
-      }
-      let ball = dst.find(i => i.type === 'ball');
-      if (!ball) {
-        if (!src.some(i => i.type === 'ball')) return false;
-        ball = { id: 'ball', type: 'ball', ph: dstPh, x: 0, y: 0, carrier: '' };
-        board.items.push(ball);
-      }
-      ball.carrier = dest.carrier;
-      ball.x = round1(dest.x);
-      ball.y = round1(dest.y);
-      return true;
-    }
-
-    const tok = tokenByKey(a.who);
-    const start = src.find(i => keyOf(i) === a.who);
-    if (!tok || !start) return false;
-    let p = null;
-    if (a.act === 'move') {
-      const v = DIR_VEC[a.dir];
-      if (!v) return false;
-      p = clampField({ x: start.x + v[0] * a.n * G.cw, y: start.y + v[1] * a.n * G.ch });
-    } else if (a.act === 'goto') {
-      const z = parseZone(a.zone);
-      if (!z) return false;
-      p = nudgeFree(cellCenter(z.c, z.r), dstPh, a.who);
-    } else if (a.act === 'press') {
-      const target = tokenByKey(a.target);
-      if (!target) return false;
-      const d = Math.hypot(start.x - target.x, start.y - target.y) || 1;
-      p = nudgeFree({ x: target.x + ((start.x - target.x) / d) * 32, y: target.y + ((start.y - target.y) / d) * 32 }, dstPh, a.who);
-    } else if (a.act === 'mark') {
-      const target = tokenByKey(a.target);
-      if (!target) return false;
-      // Del lado del arco propio de quien marca: las nuestras abajo del rival, los rivales arriba.
-      p = nudgeFree({ x: target.x, y: target.y + (tok.type === 'rival' ? -32 : 32) }, dstPh, a.who);
-    } else {
-      return false;
-    }
-    tok.x = round1(p.x);
-    tok.y = round1(p.y);
-    syncBalls(dstPh);
-    return true;
-  }
-
-  // Deshace el efecto de una acción: la pieza vuelve a donde estaba en la fase anterior.
-  function restoreFromSource(a) {
-    const src = resolvedPhase(a.ph - 1);
-    const dst = phaseItems(a.ph);
-    if (a.who === 'b:ball') {
-      const before = src.find(i => i.type === 'ball');
-      const ball = dst.find(i => i.type === 'ball');
-      if (!before || !ball) return;
-      const holds = before.carrier && dst.some(i => isToken(i) && keyOf(i) === before.carrier);
-      ball.carrier = holds ? before.carrier : '';
-      ball.x = before.x;
-      ball.y = before.y;
-      syncBalls(a.ph);
-      return;
-    }
-    const tok = dst.find(i => isToken(i) && keyOf(i) === a.who);
-    const start = src.find(i => keyOf(i) === a.who);
-    if (tok && start) {
-      tok.x = start.x;
-      tok.y = start.y;
-      syncBalls(a.ph);
-    }
-  }
-
-  // Una acción por pieza y transición: si ya había una, la nueva la reemplaza.
-  function addAction(spec) {
-    if (curPhase < 1 || mode === 'play') return false;
-    const a = Object.assign({ id: newId(), type: 'action', ph: curPhase, dir: '', n: 1, zone: '', target: '', side: 'center' }, spec);
-    const before = snapshot();
-    board.items = board.items.filter(i => !(i.type === 'action' && i.ph === curPhase && i.who === a.who));
-    if (!applyAction(a)) {
-      restore(before);
-      return false;
-    }
-    board.items.push(a);
-    commit(before);
-    refreshAll();
-    return true;
-  }
-
-  function removeAction(id) {
-    const a = board.items.find(i => i.id === id && i.type === 'action');
-    if (!a) return;
-    mutate(() => {
-      board.items = board.items.filter(i => i !== a);
-      restoreFromSource(a);
-    });
-    refreshAll();
-  }
-
-  // Cambia el orden de la acción (importa cuando van una tras otra).
-  function moveAction(id, delta) {
-    const list = actionsOf(curPhase);
-    const idx = list.findIndex(a => a.id === id);
-    const other = list[idx + delta];
-    if (idx < 0 || !other) return;
-    mutate(() => {
-      const i1 = board.items.indexOf(list[idx]);
-      const i2 = board.items.indexOf(other);
-      board.items[i1] = other;
-      board.items[i2] = list[idx];
-    });
-    refreshAll();
-  }
-
-  // Vuelve a calcular todas las acciones de esta transición desde la fase anterior
-  // (útil si se cambió algo en la fase anterior). Las que ya no se pueden aplicar se descartan.
-  function recomputeActions() {
-    if (curPhase < 1) return;
-    const before = snapshot();
-    actionsOf(curPhase).forEach(a => {
-      if (!applyAction(a)) board.items = board.items.filter(i => i !== a);
-    });
-    commit(before);
     refreshAll();
   }
 
@@ -942,10 +709,6 @@
     board.items.forEach(i => {
       if (i.type === 'player' && i.name === oldName) i.name = newName;
       if (i.type === 'ball' && i.carrier === oldKey) i.carrier = newKey;
-      if (i.type === 'action') {
-        if (i.who === oldKey) i.who = newKey;
-        if (i.target === oldKey) i.target = newKey;
-      }
     });
   }
 
@@ -1092,6 +855,11 @@
       showError(`Máximo ${MAX_SIM_PHASES} fases por simulación.`);
       return;
     }
+    const goal = goalPhase();
+    if (goal >= 0 && curPhase >= goal) {
+      showError('La jugada terminó en gol: no se pueden agregar fases después. Agregala antes del gol o sacá la pelota del arco.');
+      return;
+    }
     showError('');
     const cur = curPhase;
     mutate(() => {
@@ -1221,7 +989,9 @@
       btn.type = 'button';
       btn.className = 'phase-tab' + (i === curPhase && mode === 'edit' ? ' active' : '');
       btn.textContent = `${i + 1}${p.name ? ' · ' + p.name : ''}`;
-      btn.title = p.name || `Fase ${i + 1}`;
+      const afterGoal = goalPhase() >= 0 && i > goalPhase();
+      btn.classList.toggle('after-goal', afterGoal);
+      btn.title = afterGoal ? `Fase ${i + 1}: no se reproduce (la jugada terminó en gol)` : (p.name || `Fase ${i + 1}`);
       btn.disabled = recording;
       btn.addEventListener('click', () => goPhase(i));
       tabs.appendChild(btn);
@@ -1280,118 +1050,6 @@
     }[simTool];
 
     updateSelBar();
-    renderActionPanel();
-  }
-
-  // Cambia las opciones de un <select> solo si cambiaron (así no se pierde lo que se estaba eligiendo).
-  function setOptions(sel, opts, wanted) {
-    const sig = JSON.stringify(opts);
-    const prev = sel.value;
-    if (sel.dataset.sig !== sig) {
-      sel.innerHTML = '';
-      opts.forEach(o => {
-        const opt = document.createElement('option');
-        opt.value = o[0];
-        opt.textContent = o[1];
-        sel.appendChild(opt);
-      });
-      sel.dataset.sig = sig;
-    }
-    const want = wanted !== undefined ? wanted : prev;
-    if (opts.some(o => o[0] === want)) sel.value = want;
-    else if (opts.length) sel.value = opts[0][0];
-  }
-
-  const ALL_ZONES = [];
-  for (let r = G.rows; r >= 1; r--) {
-    for (let c = 0; c < G.cols; c++) ALL_ZONES.push([zoneName(c, r), `${zoneName(c, r)} · ${ZONE_BAND[r]}`]);
-  }
-
-  function renderActionPanel() {
-    const first = curPhase === 0;
-    const playingMode = mode === 'play';
-    $('simActionForm').hidden = first;
-    $('simSeqRow').hidden = first;
-    $('simActionsHint').textContent = first
-      ? 'La primera fase no tiene transición: las acciones se agregan desde la fase 2.'
-      : `Transición ${curPhase} → ${curPhase + 1}: elegí una pieza y qué hace. La app la mueve en esta fase; si después la arrastrás a mano, la acción se quita.`;
-    const list = $('simActionList');
-    list.innerHTML = '';
-    $('recalcBtn').disabled = true;
-    if (first) return;
-
-    const src = resolvedPhase(curPhase - 1).filter(isMovable);
-    const dstKeys = new Set(phaseItems(curPhase).filter(isMovable).map(keyOf));
-    const pieces = src.filter(i => dstKeys.has(keyOf(i))).map(i => [keyOf(i), pieceLabel(keyOf(i))]);
-    setOptions($('actPiece'), pieces);
-    const who = $('actPiece').value;
-    const isBall = who === 'b:ball';
-    setOptions($('actType'), (isBall ? BALL_ACTS : TOKEN_ACTS).map(a => [a, ACT_LABELS[a]]));
-    const type = $('actType').value;
-
-    const usesTarget = ['press', 'mark', 'pass', 'cross', 'lob'].includes(type);
-    const targets = phaseItems(curPhase).filter(isToken).filter(i => keyOf(i) !== who).map(i => [keyOf(i), pieceLabel(keyOf(i))]);
-    const withZones = type === 'cross' || type === 'lob';
-    setOptions($('actTarget'), withZones ? targets.concat(ALL_ZONES.map(z => ['z:' + z[0], 'Zona ' + z[1]])) : targets);
-    setOptions($('actZone'), ALL_ZONES);
-    $('actN').hidden = !MOVE_LABELS[type];
-    $('actNUnit').hidden = !MOVE_LABELS[type];
-    $('actZone').hidden = !(type === 'goto' || type === 'space');
-    $('actTarget').hidden = !usesTarget;
-    $('actSide').hidden = !(type === 'shot' || type === 'goal');
-    $('addActionBtn').disabled = playingMode || recording || !pieces.length;
-
-    const seqBox = $('simSeq');
-    seqBox.checked = !!(board.phases[curPhase] && board.phases[curPhase].seq);
-    seqBox.disabled = playingMode || recording;
-    $('recalcBtn').disabled = playingMode || recording || !actionsOf(curPhase).length;
-
-    const acts = actionsOf(curPhase);
-    if (!acts.length) {
-      const li = document.createElement('li');
-      li.className = 'hint';
-      li.textContent = 'Todavía no hay acciones en esta transición: las fichas se mueven en línea recta de un lugar al otro.';
-      list.appendChild(li);
-    }
-    acts.forEach((a, i) => {
-      const li = document.createElement('li');
-      li.className = 'sim-action';
-      const label = document.createElement('span');
-      label.textContent = (board.phases[curPhase].seq ? `${i + 1}. ` : '') + describeAction(a);
-      li.appendChild(label);
-      [['▲', -1, 'Subir'], ['▼', 1, 'Bajar']].forEach(([txt, delta, title]) => {
-        const b = document.createElement('button');
-        b.type = 'button';
-        b.className = 'tool-btn sim-mini';
-        b.textContent = txt;
-        b.title = title;
-        b.disabled = playingMode || recording || !acts[i + delta];
-        b.addEventListener('click', () => moveAction(a.id, delta));
-        li.appendChild(b);
-      });
-      const del = document.createElement('button');
-      del.type = 'button';
-      del.className = 'tool-btn sim-mini';
-      del.textContent = '✕';
-      del.title = 'Quitar la acción (la pieza vuelve a donde estaba)';
-      del.disabled = playingMode || recording;
-      del.addEventListener('click', () => removeAction(a.id));
-      li.appendChild(del);
-      list.appendChild(li);
-    });
-  }
-
-  function readActionSpec() {
-    const who = $('actPiece').value;
-    const type = $('actType').value;
-    if (!who || !type) return null;
-    const spec = { who };
-    if (DIR_VEC[type]) { spec.act = 'move'; spec.dir = type; spec.n = Number($('actN').value) || 1; }
-    else spec.act = type;
-    if (type === 'goto' || type === 'space') spec.zone = $('actZone').value;
-    if (['press', 'mark', 'pass', 'cross', 'lob'].includes(type)) spec.target = $('actTarget').value;
-    if (type === 'shot' || type === 'goal') spec.side = $('actSide').value;
-    return spec;
   }
 
   // La barra de la ficha elegida ocupa siempre el mismo lugar (ver .sim-selbar en el CSS):
@@ -1457,7 +1115,7 @@
   // ------------------------------------------------------------------
   function flattenBoard() {
     const metas = board.phases.map((p, i) => ({
-      id: 'ph' + i, type: 'phase', ph: i, name: p.name, note: p.note, dur: p.dur, seq: !!p.seq
+      id: 'ph' + i, type: 'phase', ph: i, name: p.name, note: p.note, dur: p.dur
     }));
     return metas.concat(clone(board.items));
   }
@@ -1473,7 +1131,7 @@
     const phases = [];
     for (let i = 0; i < count; i++) {
       const m = metas.find(x => x.ph === i);
-      phases.push(m ? { name: m.name, note: m.note, dur: m.dur, seq: !!m.seq } : newPhase());
+      phases.push(m ? { name: m.name, note: m.note, dur: m.dur } : newPhase());
     }
     items.forEach(i => { if (i.ph >= count) i.ph = count - 1; });
     return { items, phases };
@@ -1654,7 +1312,7 @@
       if (st.ball) ballSpec = { carrier: st.ball };
       if (st.ballAt) ballSpec = { at: st.ballAt };
       if (st.ballAct === 'goal' || st.ballAct === 'shot') ballSpec = { at: [THEME.GOAL_X.center, THEME.GOAL_Y[st.ballAct]] };
-      phases.push({ name: st.name, note: st.note, dur: idx === 0 ? SIM_DEFAULT_DUR : (st.dur || SIM_DEFAULT_DUR), seq: false });
+      phases.push({ name: st.name, note: st.note, dur: idx === 0 ? SIM_DEFAULT_DUR : (st.dur || SIM_DEFAULT_DUR) });
       Object.keys(our).forEach(role => {
         items.push({ id: newId(), type: 'player', ph: idx, name: role, x: our[role][0], y: our[role][1] });
       });
@@ -1668,12 +1326,6 @@
         });
       } else if (ballSpec) {
         items.push({ id: 'ball', type: 'ball', ph: idx, x: ballSpec.at[0], y: ballSpec.at[1], carrier: '' });
-      }
-      if (st.ballAct && idx > 0) {
-        items.push({
-          id: newId(), type: 'action', ph: idx, who: 'b:ball', act: st.ballAct, dir: '', n: 1, zone: '', side: 'center',
-          target: st.ballAct === 'goal' || st.ballAct === 'shot' ? '' : 'p:' + st.ball
-        });
       }
       (st.zones || []).forEach(z => items.push({ id: newId(), type: 'zone', ph: idx, zc: z[0], zr: z[1], color: z[2] }));
       (st.texts || []).forEach(t => items.push({ id: newId(), type: 'text', ph: idx, x: t.x, y: t.y, text: t.text, color: '#ffffff' }));
@@ -1792,7 +1444,7 @@
       if (!draft || !draft.dirty) return;
       const parts = splitFlat([].concat(
         (Array.isArray(draft.phases) ? draft.phases : []).slice(0, MAX_SIM_PHASES).map((p, i) => ({
-          id: 'ph' + i, type: 'phase', ph: i, name: p && p.name, note: p && p.note, dur: p && p.dur, seq: !!(p && p.seq)
+          id: 'ph' + i, type: 'phase', ph: i, name: p && p.name, note: p && p.note, dur: p && p.dur
         })),
         Array.isArray(draft.items) ? draft.items : []
       ));
@@ -1887,20 +1539,6 @@
       textEditBefore = null;
       if (item && item.type === 'text') textInput.value = item.text;
     });
-
-    $('actPiece').addEventListener('change', renderActionPanel);
-    $('actType').addEventListener('change', renderActionPanel);
-    $('addActionBtn').addEventListener('click', () => {
-      const spec = readActionSpec();
-      if (!spec) return;
-      if (!addAction(spec)) showError('No se pudo aplicar esa acción: falta alguna de las piezas en esta fase.');
-      else showError('');
-    });
-    $('simSeq').addEventListener('change', e => {
-      mutate(() => { board.phases[curPhase].seq = e.target.checked; });
-      refreshAll();
-    });
-    $('recalcBtn').addEventListener('click', recomputeActions);
 
     $('simUndo').addEventListener('click', undo);
     $('simRedo').addEventListener('click', redo);
