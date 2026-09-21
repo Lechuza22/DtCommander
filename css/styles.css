@@ -675,6 +675,10 @@ input[type="range"] { width: 100%; }
 #tacticField.tool-erase .t-item { cursor: pointer; }
 
 /* ===== Simulación ===== */
+/* Al tocar una ficha aparece la barra de acciones debajo de la cancha; el navegador
+   "compensaba" ese cambio corriendo la página, y la cancha se movía en pleno arrastre. */
+#panel-simulacion { overflow-anchor: none; }
+
 #simField {
   width: 100%;
   height: auto;
@@ -690,24 +694,66 @@ input[type="range"] { width: 100%; }
 /* Sin min-width: 0 una columna de la grilla no se achica por debajo de su contenido:
    la fila de pestañas de fase (que se desliza de costado) ensanchaba toda la página. */
 .field-layout > .card { min-width: 0; }
+.sim-tools { margin-top: 0.75rem; gap: 0.4rem 0.6rem; }
+.sim-toolhint { margin: 0.4rem 0 0; }
+.sim-selbar .tactic-text-input { flex: 1 0 160px; }
+.sim-selbar > * { flex-shrink: 0; }
+.sim-selbar::-webkit-scrollbar { display: none; }
+
+.sim-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+  padding: 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+.sim-actions-head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.9rem; }
+.sim-actions .hint { margin: 0; }
+.sim-actrow select { max-width: 100%; min-width: 0; }
+.sim-actionlist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.35rem; }
+.sim-action {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.5rem;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+}
+.sim-action > span { flex: 1; min-width: 0; }
+.sim-mini { padding: 0.15rem 0.5rem; }
+
+#panel-simulacion.sim-playing .sim-tools,
+#panel-simulacion.sim-playing .sim-actions,
+#panel-simulacion.sim-playing .sim-selbar { opacity: 0.55; pointer-events: none; }
+
 .sim-panel { min-width: 0; }
 
 .sim-start { display: flex; flex-direction: column; gap: 0.6rem; }
 .sim-start-row { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; }
 .sim-start-row select { flex: 1; min-width: 200px; }
 
+/* Siempre ocupa el mismo alto (una sola fila que se desliza de costado): que aparezca o
+   desaparezca al tocar una ficha no puede mover la página en pleno arrastre. */
 .sim-selbar {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 0.5rem;
+  min-height: 48px;
+  overflow-x: auto;
+  scrollbar-width: none;
   margin-top: 0.75rem;
   padding: 0.5rem 0.6rem;
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 8px;
 }
-.sim-sellabel { font-weight: 600; font-size: 13px; color: var(--primary-dark); margin-right: 0.3rem; }
+.sim-sellabel { font-weight: 600; font-size: 13px; color: var(--primary-dark); margin-right: 0.3rem; white-space: nowrap; }
 
 .sim-panel {
   display: flex;
