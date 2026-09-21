@@ -5,12 +5,14 @@ El dibujo y la grabación de video de la pestaña Simulación. Expone
 
 ## Dos formas de dibujar lo mismo
 
-Las piezas (jugadoras, rivales, pelota y flechas de recorrido) se dibujan
-de dos maneras:
+Las piezas (jugadoras, rivales, pelota, flechas de recorrido, casilleros
+sombreados, textos y la grilla) se dibujan de dos maneras:
 
 - **SVG** (`renderItemsSvg`, `drawPitchSvg`): para la pantalla. Cada pieza es
   un nodo que la interfaz puede tocar y arrastrar (`class="t-item"` con su
-  `data-id`); las flechas de recorrido son `t-auto` y no reciben toques.
+  `data-id`); las flechas de recorrido, los casilleros y la grilla son `t-auto`
+  y no reciben toques (los casilleros se sombrean tocando la cancha, no el
+  casillero).
 - **canvas** (`drawItemsCanvas`, `drawVideoFrame`): para el video. Cada
   cuadro se pinta directo con la API 2D del canvas. Se hizo aparte porque
   la alternativa (convertir cada cuadro a una imagen SVG y dibujarla) es
@@ -18,7 +20,15 @@ de dos maneras:
 
 Las dos comparten las medidas (`THEME`) y la geometría de la punta de
 flecha (`arrowGeometry`), para que se vean iguales. Cada pieza puede traer
-`_o` (opacidad de 0 a 1, para las que entran o salen en una transición).
+`_o` (opacidad de 0 a 1, para las que entran o salen en una transición) y, la
+pelota, `_h` (altura de 0 a 1 en un pase por arriba: se dibuja más grande y
+levantada, con su sombra en el piso). El orden de capas (`DRAW_ORDER`) es:
+grilla, casilleros, flechas, jugadoras y rivales, pelota y textos.
+
+`THEME.GRID` define los casilleros (3 columnas por 4 filas alineadas con las
+líneas de la cancha), `cellRect` da el rectángulo de cada uno y `cellName` su
+nombre (`A1` a `C4`). `THEME.GOAL_X` y `GOAL_Y` dicen adónde va la pelota en
+un tiro o un gol.
 
 ## El cuadro de video: `drawVideoFrame`
 
