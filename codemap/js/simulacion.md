@@ -230,6 +230,12 @@ Igual que en Táctica: `saveSim` (con `asCopy`), `openSim`, `newSim`,
 "blando" (ver [[eliminación blanda (soft delete)]]) y un borrador en
 `localStorage` (`dtcomander_sim_draft`) mientras hay cambios sin guardar.
 
+La lista `state.simulations` también guarda las secuencias de la pestaña
+[Secuencia](secuencia.md) (otro modelo de la misma hoja): `visibleSims()` las
+oculta porque tienen un item `seq`. Y `window.SimTemplates` expone
+`TEMPLATES`, `OUR_BASE` y `RIV_BASE` para que Secuencia arme sus jugadas de
+ejemplo a partir de las mismas.
+
 ## Punto de partida: `boardFromTemplate` / `boardFromTactic`
 
 - **Jugadas de ejemplo** (`TEMPLATES`): salir jugando de abajo, ataque desde
