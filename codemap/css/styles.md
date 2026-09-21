@@ -69,6 +69,14 @@ sea fácil ubicar qué tocar.
   sin eso una columna de la grilla no se achica por debajo de su contenido y la
   fila de pestañas de fase (que no se puede comprimir) ensanchaba toda la
   página en celulares.
+- **Secuencia**: `#seqField` (igual que `#simField`, con `overflow-anchor: none`
+  en `#panel-secuencia` por el mismo motivo), `.seq-modes` (Armar / Grabar y
+  Paso nuevo / Mismo paso), `.seq-moves` con `.seq-step` (tarjeta de un paso,
+  `.active` el del cursor), `.seq-stephead`, `.seq-dur`, y `.seq-move` (fila de
+  un movimiento, `.selected` el elegido) con `.seq-who`, `.seq-what`,
+  `.seq-kind` y `.seq-text`. Reusa `.sim-*` para lo demás (barra de la ficha,
+  herramientas, pestañas de paso). Con `.seq-playing` se atenúan las
+  herramientas, la barra y la tabla.
 - **Formularios inline** (alta de jugadora, de partido, y de evaluación):
   `.add-player-form`, reutilizado por `#addPlayerForm`, `#addMatchForm` y
   `#saveEvalForm` — incluye estilos tanto para `input[type=text]` como
