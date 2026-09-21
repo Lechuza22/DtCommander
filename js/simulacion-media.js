@@ -20,10 +20,14 @@
     FIELD_LINE: 'rgba(255,255,255,0.67)',
     TEAM_COLOR: '#2563eb',
     RIVAL_COLOR: '#dc2626',
-    TOKEN_R: 14,
+    // Fichas al 80% del tamaño original (14): eran grandes para la cancha. El área de toque no se achicó.
+    TOKEN_R: 11.2,
+    TOKEN_HIT_R: 14,
+    TOKEN_FONT: 9.6,
+    NAME_FONT: 8.5,
     // Dónde queda la pelota respecto de quien la lleva (abajo a la derecha, tocando el borde de la ficha)
-    BALL_DX: 11,
-    BALL_DY: 10,
+    BALL_DX: 8.8,
+    BALL_DY: 8,
     // Grilla de casilleros: 3 columnas (A a C, de izquierda a derecha) por 4 filas
     // (1 a 4, desde el arco propio hacia el rival), alineada con las líneas de la cancha.
     GRID: { x0: 10, y0: 10, cw: 280 / 3, ch: 95, cols: 3, rows: 4 },
@@ -181,16 +185,18 @@
         'stroke-dasharray': '4 3', 'pointer-events': 'none'
       }, g);
     }
+    svgEl('circle', { r: THEME.TOKEN_HIT_R, fill: 'transparent' }, g);
     svgEl('circle', {
-      r: THEME.TOKEN_R, fill: isRival ? THEME.RIVAL_COLOR : THEME.TEAM_COLOR, stroke: '#ffffff', 'stroke-width': 2
+      r: THEME.TOKEN_R, fill: isRival ? THEME.RIVAL_COLOR : THEME.TEAM_COLOR, stroke: '#ffffff', 'stroke-width': 1.6,
+      'pointer-events': 'none'
     }, g);
     const inner = svgEl('text', {
-      'text-anchor': 'middle', dy: 4, fill: '#ffffff', 'font-size': 12, 'font-weight': 700,
+      'text-anchor': 'middle', dy: 3.3, fill: '#ffffff', 'font-size': THEME.TOKEN_FONT, 'font-weight': 700,
       'font-family': THEME.FONT, 'pointer-events': 'none'
     }, g);
     inner.textContent = isRival ? item.label : (item.name || '?').charAt(0).toUpperCase();
     if (!isRival) {
-      haloSvg(g, shortName(item.name || ''), { y: THEME.TOKEN_R + 12, fill: '#ffffff', 'font-size': 9.5 });
+      haloSvg(g, shortName(item.name || ''), { y: THEME.TOKEN_R + 10.5, fill: '#ffffff', 'font-size': THEME.NAME_FONT });
     }
   }
 
@@ -199,7 +205,9 @@
   function ballSvg(g, item, selected) {
     g.setAttribute('transform', `translate(${item.x}, ${item.y})`);
     if (selected) selectionBox(g, -6, -6, 6, 6);
-    svgEl('circle', { r: 13, fill: 'transparent' }, g);
+    // Pegada a una jugadora queda a ~12 de su centro: con un área de toque de 13 taparía el centro de la ficha
+    // y al agarrar a la jugadora se arrastraría la pelota.
+    svgEl('circle', { r: item.carrier ? 8.5 : 13, fill: 'transparent' }, g);
     const h = item._h || 0;
     if (h > 0.02) {
       svgEl('ellipse', { cx: 0, cy: 0, rx: 5.5, ry: 3, fill: '#000000', 'fill-opacity': 0.3, 'pointer-events': 'none' }, g);
@@ -503,14 +511,14 @@
         ctx.arc(0, 0, THEME.TOKEN_R, 0, Math.PI * 2);
         ctx.fillStyle = isRival ? THEME.RIVAL_COLOR : THEME.TEAM_COLOR;
         ctx.fill();
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 1.6;
         ctx.strokeStyle = '#ffffff';
         ctx.stroke();
-        ctx.font = `bold 12px ${THEME.FONT}`;
+        ctx.font = `bold ${THEME.TOKEN_FONT}px ${THEME.FONT}`;
         ctx.textAlign = 'center';
         ctx.fillStyle = '#ffffff';
-        ctx.fillText(isRival ? item.label : (item.name || '?').charAt(0).toUpperCase(), 0, 4);
-        if (!isRival) haloCanvas(ctx, shortName(item.name || ''), 0, THEME.TOKEN_R + 12, 9.5, '#ffffff');
+        ctx.fillText(isRival ? item.label : (item.name || '?').charAt(0).toUpperCase(), 0, 3.3);
+        if (!isRival) haloCanvas(ctx, shortName(item.name || ''), 0, THEME.TOKEN_R + 10.5, THEME.NAME_FONT, '#ffffff');
       }
       ctx.restore();
     });
