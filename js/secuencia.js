@@ -239,10 +239,31 @@
     return board.decor.filter(d => d.ph === ph).map(d => Object.assign({}, d, { id: 'dc:' + d.id, _o: alpha }));
   }
 
+  // Primer paso en el que la pelota termina adentro de un arco (0 si nunca entra).
+  // Ahí termina la jugada: lo que venga después no se reproduce.
+  function goalStep(S) {
+    const states = S || allStates();
+    for (let s = 1; s < states.length; s++) {
+      const pos = resolvedPos(states[s], 'b:ball');
+      if (pos && M.goalSide(pos.x, pos.y)) return s;
+    }
+    return 0;
+  }
+
+  // Pasos que se reproducen: hasta el gol o, si no hay, todos.
+  function stepsToPlay(S) {
+    const g = goalStep(S);
+    return g > 0 ? g : board.steps.length;
+  }
+
+  // "¡GOL!" y "FIN" en el lugar más despejado de la cancha, para no tapar a nadie.
   function goalFlashFor(s, alpha, S) {
-    if (s < 1 || !board.steps[s - 1] || !board.steps[s - 1].moves.some(m => m.kind === 'goal')) return [];
-    const spot = roomiestPoint(S[s], 84, 30, 150, 110);
-    return [{ id: 'goal-flash', type: 'text', _auto: true, big: true, x: spot.x, y: spot.y + 9, text: '¡GOL!', color: '#facc15', _o: alpha }];
+    if (s < 1 || s !== goalStep(S)) return [];
+    const spot = roomiestPoint(S[s], 84, 60, 150, 110);
+    return [
+      { id: 'goal-flash', type: 'text', _auto: true, big: true, x: spot.x, y: spot.y - 2, text: '¡GOL!', color: '#facc15', _o: alpha },
+      { id: 'fin-flash', type: 'text', _auto: true, big: true, x: spot.x, y: spot.y + 28, text: 'FIN', color: '#ffffff', _o: alpha }
+    ];
   }
 
   // Dónde poner un cartel de w x h sin tapar fichas: el lugar libre más cercano a (ax, ay).
@@ -641,6 +662,8 @@
 
   // Al soltar la pelota cerca de una jugadora es un pase a ella; en la boca del arco, un tiro.
   function ballLanding(map, end, exceptKey) {
+    const side = M.goalSide(end[0], end[1]);
+    if (side) return { kind: 'goal', to: '', end: [clamp(end[0], 124, 176), side === 'top' ? THEME.GOAL_Y.goal : 400 - THEME.GOAL_Y.goal] };
     const holder = nearestToken(map, end[0], end[1], exceptKey);
     if (holder) return { kind: 'pass', to: holder };
     if (end[1] <= 24 && end[0] >= 116 && end[0] <= 184) return { kind: 'shot', to: '', end: [clamp(end[0], 122, 178), THEME.GOAL_Y.shot] };
@@ -657,9 +680,14 @@
       showError(`Máximo ${MAX_STEPS} pasos por secuencia.`);
       return;
     }
+    const S = allStates();
+    const goal = goalStep(S);
+    if (goal > 0 && (cursor > goal || (cursor === goal && recNew))) {
+      showError(`La jugada terminó en gol (paso ${goal}): no se pueden grabar movimientos después. Grabá antes del gol o quitá el gol.`);
+      return;
+    }
     showError('');
     const k = cursor;
-    const S = allStates();
     let kind = 'run';
     let to = '';
     if (isBall) {
@@ -722,10 +750,13 @@
     mutate(() => {
       const m = found.move;
       m.kind = kind;
+      const last = m.path[m.path.length - 1];
       if (kind === 'shot' || kind === 'goal') {
         m.to = '';
-        const last = m.path[m.path.length - 1];
         m.path[m.path.length - 1] = [clamp(last[0], 122, 178), THEME.GOAL_Y[kind]];
+      } else if (M.goalSide(last[0], last[1])) {
+        // Un pase, centro o pase por arriba que quedaba adentro del arco: pasa a terminar justo afuera.
+        m.path[m.path.length - 1] = [last[0], last[1] <= 10 ? 22 : 378];
       }
     });
     refreshAll();
@@ -1057,21 +1088,24 @@
   // ------------------------------------------------------------------
   function timeline() {
     const segs = [{ type: 'hold', s: 0, ms: HOLD_START }];
-    board.steps.forEach((st, i) => {
-      const s = i + 1;
-      segs.push({ type: 'move', s, ms: Math.round(st.dur * 1000) });
-      segs.push({ type: 'hold', s, ms: (stepHasText(s) ? HOLD_TEXT : HOLD_STEP) + (s === board.steps.length ? 600 : 0) });
-    });
+    const n = stepsToPlay();
+    const goal = goalStep();
+    for (let s = 1; s <= n; s++) {
+      segs.push({ type: 'move', s, ms: Math.round(board.steps[s - 1].dur * 1000) });
+      // Después del gol la pausa es más larga: hay que ver el "¡GOL!" y el "FIN".
+      const rest = s === goal ? 1800 : (s === n ? 600 : 0);
+      segs.push({ type: 'hold', s, ms: (stepHasText(s) ? HOLD_TEXT : HOLD_STEP) + rest });
+    }
     return segs;
   }
 
   const totalMs = () => timeline().reduce((t, sg) => t + sg.ms, 0);
 
   function captionFor(s) {
-    const n = board.steps.length;
+    const n = stepsToPlay();
     if (s === 0) return { title: n ? `Inicio · ${n} ${n === 1 ? 'paso' : 'pasos'}` : 'Inicio', note: '' };
     const texts = board.steps[s - 1].moves.map(m => m.text).filter(Boolean);
-    return { title: `Paso ${s}/${n}`, note: texts.join(' · ') };
+    return { title: `Paso ${s}/${n}${s === goalStep() ? ' · ¡Gol! Fin' : ''}`, note: texts.join(' · ') };
   }
 
   function holdFrame(S, s) {
@@ -1262,6 +1296,8 @@
     if (!pts) return '';
     if (m.piece === 'b:ball') {
       const label = KIND_LABELS[m.kind] || 'Pase';
+      const end = pts[pts.length - 1];
+      if (M.goalSide(end[0], end[1])) return 'Gol';
       if (m.kind === 'shot' || m.kind === 'goal') return label;
       if (m.to) return `${label} a ${pieceLabel(m.to)}`;
       return `${label} a la zona ${zoneOf(pts[pts.length - 1])}`;
@@ -1278,7 +1314,7 @@
       const btn = document.createElement('button');
       btn.type = 'button';
       const activeK = mode === 'setup' ? 0 : cursor;
-      btn.className = 'phase-tab' + (k === activeK && mode !== 'play' ? ' active' : '');
+      btn.className = 'phase-tab' + (k === activeK && mode !== 'play' ? ' active' : '') + (goalStep() > 0 && k > goalStep() ? ' after-goal' : '');
       btn.textContent = label;
       btn.title = k === 0 ? 'Cómo arranca la jugada' : `Cómo queda todo después del paso ${k}`;
       btn.disabled = recording;
@@ -1302,16 +1338,19 @@
       return;
     }
     const S = allStates();
+    const goal = goalStep(S);
     const locked = mode === 'play' || recording;
     board.steps.forEach((st, si) => {
       const s = si + 1;
       const stepEl = document.createElement('div');
-      stepEl.className = 'seq-step' + (mode !== 'setup' && cursor === s ? ' active' : '');
+      const afterGoal = goal > 0 && s > goal;
+      stepEl.className = 'seq-step' + (mode !== 'setup' && cursor === s ? ' active' : '') + (afterGoal ? ' after-goal' : '');
 
       const head = document.createElement('div');
       head.className = 'seq-stephead';
       const title = document.createElement('strong');
-      title.textContent = `Paso ${s}` + (st.moves.length > 1 ? ` · ${st.moves.length} a la vez` : '');
+      title.textContent = `Paso ${s}` + (st.moves.length > 1 ? ` · ${st.moves.length} a la vez` : '')
+        + (s === goal ? ' · ¡Gol! Fin' : '') + (afterGoal ? ' · no se reproduce (terminó en gol)' : '');
       head.appendChild(title);
 
       const durLabel = document.createElement('label');
