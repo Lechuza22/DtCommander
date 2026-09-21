@@ -243,7 +243,9 @@
       if (dist < TRAIL_MIN) return;
       const reach = dist * progressOf(key);
       const headLen = reach - (now.type === 'ball' ? 8 : TOKEN_R + 3);
-      if (headLen < 6) return;
+      // Largo mínimo visible: con las fichas de 14 de radio una flecha más corta quedaba tapada; sin este mínimo
+      // aparecerían rayitas sueltas.
+      if (headLen < 9) return;
       const ux = dx / dist;
       const uy = dy / dist;
       const color = now.type === 'ball' ? '#facc15' : TRAIL_COLORS[now.type];
