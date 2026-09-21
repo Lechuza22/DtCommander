@@ -25,6 +25,17 @@ pelota, `_h` (altura de 0 a 1 en un pase por arriba: se dibuja más grande y
 levantada, con su sombra en el piso). El orden de capas (`DRAW_ORDER`) es:
 grilla, casilleros, flechas, jugadoras y rivales, pelota y textos.
 
+Los **recorridos** (`type: 'track'`, usados por la Secuencia) son una lista de
+puntos con su flecha y el número del paso en un círculo (`trackSvg`,
+`trackParts`): la punta apunta según los últimos ~8 de camino, así una curva
+que termina lenta igual queda bien orientada. `pointAlong(puntos, fracción)` da el
+punto a esa fracción del **largo** del camino (lo usa la animación) y
+`simplifyPath` (Ramer–Douglas–Peucker) deja un camino grabado con pocos puntos.
+La punta arrastrable de un recorrido elegido es un item aparte (`handle`, capa
+superior): si fuera parte del recorrido, la ficha que termina justo ahí la
+taparía. `deliverFile` es la entrega del video: menú de compartir en celular,
+descarga en compu.
+
 `THEME.GRID` define los casilleros (3 columnas por 4 filas alineadas con las
 líneas de la cancha), `cellRect` da el rectángulo de cada uno y `cellName` su
 nombre (`A1` a `C4`). `THEME.GOAL_X` y `GOAL_Y` dicen adónde va la pelota en
