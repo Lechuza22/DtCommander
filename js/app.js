@@ -416,6 +416,8 @@ function mergeTactics(localList, remoteList) {
 //   { type: 'player' | 'rival' | 'ball', ph, x, y, ... }  las piezas de cada fase
 //   { type: 'text', ph, x, y, text, color }               un cuadro de texto en esa fase
 //   { type: 'zone', ph, zc, zr, color }                   un casillero sombreado (col 0-2, fila 1-4 desde el arco propio)
+// 'seq', 'step' y 'move' son de la solapa Secuencia, que se archivó (ver archivo/secuencia/): la app ya no las
+// muestra, pero se siguen aceptando para que las secuencias guardadas en la Sheet no se pierdan al sincronizar.
 const SIM_ITEM_TYPES = ['phase', 'player', 'rival', 'ball', 'text', 'zone', 'seq', 'step', 'move'];
 const SIM_MOVE_KINDS = ['run', 'pass', 'cross', 'lob', 'shot', 'goal'];
 const MAX_SIM_STEPS = 40;
@@ -578,7 +580,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupEntrenamiento();
     if (typeof setupTactica === 'function') setupTactica();
     if (typeof setupSimulacion === 'function') setupSimulacion();
-    if (typeof setupSecuencia === 'function') setupSecuencia();
     renderAll();
   } catch (err) {
     // Si el render local falla (p. ej. estado viejo en localStorage), no
@@ -654,7 +655,6 @@ function renderAll() {
   renderEntrenamiento();
   if (typeof renderTactica === 'function') renderTactica();
   if (typeof renderSimulacion === 'function') renderSimulacion();
-  if (typeof renderSecuencia === 'function') renderSecuencia();
 }
 
 // ==================================================================
@@ -672,7 +672,6 @@ function setupTabs() {
       if (btn.dataset.tab === 'panel-entrenamiento') renderEntrenamiento();
       if (btn.dataset.tab === 'panel-tactica' && typeof renderTactica === 'function') renderTactica();
       if (btn.dataset.tab === 'panel-simulacion' && typeof renderSimulacion === 'function') renderSimulacion();
-      if (btn.dataset.tab === 'panel-secuencia' && typeof renderSecuencia === 'function') renderSecuencia();
       // Con 5 solapas la barra se desplaza en pantallas chicas: dejar visible la activa.
       btn.scrollIntoView({ inline: 'center', block: 'nearest' });
     });
