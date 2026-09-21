@@ -11,6 +11,16 @@ const ATTRIBUTES = [
 
 const POSITIONS = ['Arquera', 'Defensa', 'Mediocampo', 'Delantera'];
 
+// Atributos principales de cada puesto, para el promedio de la jugadora: cuentan completos y los demás
+// cuentan OFF_POSITION_WEIGHT (ver average). Se cambian acá y el promedio se ajusta solo.
+const POSITION_KEY_ATTRS = {
+  'Arquera': ['Portería', 'Visión', 'Posicionamiento', 'Mentalidad', 'Pegada'],
+  'Defensa': ['Defensa', 'Posicionamiento', 'Cabeceo', 'Velocidad', 'Mentalidad'],
+  'Mediocampo': ['Técnica', 'Pegada', 'Visión', 'Posicionamiento', 'Mentalidad'],
+  'Delantera': ['Ataque', 'Regate', 'Velocidad', 'Pegada', 'Técnica']
+};
+const OFF_POSITION_WEIGHT = 0.5;
+
 const PIE_DOMINANTE_OPTIONS = ['Derecho', 'Izquierdo', 'Ambos'];
 
 const POSITION_COLORS = {
@@ -270,16 +280,48 @@ function matchLabel(match) {
   return dateText ? `${rivalText} — ${dateText}` : rivalText;
 }
 
-// ¿Ataja? (Arquera como posición principal o secundaria). Solo entonces Portería cuenta en su promedio.
+// ¿Ataja? (Arquera como posición principal o secundaria). Solo se usa cuando la jugadora no tiene
+// puesto principal cargado.
 function playsGoalkeeper(player) {
   return !!player && (player.posPrincipal === 'Arquera' || player.posSecundaria === 'Arquera');
 }
 
-// Promedio de los atributos guardados (1-10). Portería queda afuera para quien no ataja: casi todas
-// tienen 1 o 2 y les bajaba unos 4 puntos (en la escala 1-100) sin decir nada de cómo juegan.
+// Cuánto cuenta cada atributo en el promedio de la jugadora, según su puesto PRINCIPAL:
+//  - los atributos principales del puesto (POSITION_KEY_ATTRS) cuentan 1;
+//  - los demás cuentan OFF_POSITION_WEIGHT, salvo Portería, que no cuenta si no es arquera
+//    (casi todas tienen 1 o 2 y les bajaba unos 4 puntos sin decir nada de cómo juegan);
+//  - sin puesto principal cargado: los atributos cuentan igual, y Portería solo si ataja.
+function attrWeights(player) {
+  const pos = player && player.posPrincipal;
+  const key = POSITION_KEY_ATTRS[pos];
+  const weights = {};
+  ATTRIBUTES.forEach(a => {
+    if (key) weights[a] = key.includes(a) ? 1 : (a === 'Portería' ? 0 : OFF_POSITION_WEIGHT);
+    else weights[a] = (a === 'Portería' && !playsGoalkeeper(player)) ? 0 : 1;
+  });
+  return weights;
+}
+
+// Promedio ponderado de los atributos guardados (1-10). El historial solo guarda atributos, así que
+// sus promedios se calculan con el puesto ACTUAL de la jugadora.
 function average(attrs, player) {
-  const keys = playsGoalkeeper(player) ? ATTRIBUTES : ATTRIBUTES.filter(a => a !== 'Portería');
-  return keys.reduce((sum, a) => sum + (attrs[a] || 0), 0) / keys.length;
+  const weights = attrWeights(player);
+  let sum = 0;
+  let total = 0;
+  ATTRIBUTES.forEach(a => { sum += weights[a] * (attrs[a] || 0); total += weights[a]; });
+  return sum / total;
+}
+
+// Texto que explica cómo se calculó el promedio de esta jugadora.
+function ratingRuleText(player) {
+  const pos = player && player.posPrincipal;
+  const key = POSITION_KEY_ATTRS[pos];
+  if (!key) {
+    return `todos sus atributos (todavía no tiene puesto principal)${playsGoalkeeper(player) ? '' : ', sin Portería'}`;
+  }
+  const list = key.slice(0, -1).join(', ') + ' y ' + key[key.length - 1];
+  const rest = pos === 'Arquera' ? 'los demás, la mitad' : 'los demás, la mitad (Portería no cuenta)';
+  return `${pos}: ${list} cuentan completos; ${rest}`;
 }
 
 // Color de texto (blanco u oscuro) con más contraste sobre un fondo #rrggbb.
@@ -1055,10 +1097,9 @@ function renderDashboardPlayerInfo(player) {
   // El color sigue al número que se ve (ya redondeado): un 89,6 se muestra 90 y tiene que ser celeste.
   const shown = Math.round(average(player.attrs, player) * SCORE_SCALE);
   const bg = colorForAttrValue(shown / SCORE_SCALE);
-  const ataja = playsGoalkeeper(player);
-  const rule = ataja ? 'los 11 atributos, con Portería' : 'los 10 atributos, sin Portería (solo cuenta si ataja)';
+  const rule = ratingRuleText(player);
   const note = document.getElementById('dashboardRatingNote');
-  if (note) note.textContent = `Promedio: ${rule}.`;
+  if (note) note.textContent = `Promedio de ${rule}.`;
   const badge = `
     <div class="player-rating" style="background:${bg};color:${readableTextColor(bg)}" title="Promedio de ${rule}">
       <span class="player-rating-value">${shown}</span>
