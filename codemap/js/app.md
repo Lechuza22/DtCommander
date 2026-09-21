@@ -344,10 +344,20 @@ Pestaña puramente de consulta: no tiene ningún control que modifique
 `player.attrs` o `player.history` — todo eso pasa en Evaluador. Sirve
 para ver el progreso de una jugadora en el tiempo.
 
-### `average(attrs)`
+### `average(attrs, player)` / `playsGoalkeeper(player)` / `readableTextColor(hex)`
 
-Devuelve el promedio de los once atributos. Se usa tanto para el
-gráfico de tendencia como para el promedio de cada fila del historial.
+`average` devuelve el promedio de los atributos guardados (1-10) y es
+la única fuente del "promedio" en la app: la insignia de la jugadora, el
+gráfico de tendencia y cada fila del historial la usan. **Portería solo
+cuenta si la jugadora ataja** (`playsGoalkeeper`: Arquera como posición
+principal o secundaria); para el resto promedia los otros diez atributos.
+Es un promedio general, no ponderado por puesto. La razón: casi todas las
+que no atajan tienen 1 o 2 en Portería, y con los once atributos eso les
+bajaba unos 4 puntos (en la escala 1-100) y a varias las dejaba un color
+más abajo sin decir nada de cómo juegan. Como el historial guarda solo
+atributos, sus promedios se calculan con las posiciones **actuales** de la
+jugadora. `readableTextColor` elige texto blanco u oscuro según el mayor
+contraste sobre un fondo `#rrggbb` (lo usa la insignia).
 
 ### `setupDashboard()`
 
@@ -374,7 +384,13 @@ ordenado por fecha.
 
 `renderDashboardPlayerInfo` muestra, de solo lectura, nombre, apodo,
 edad (`"12 años"`), altura (`"145 cm"`), pie dominante y posiciones;
-lo que la jugadora no tenga cargado se ve como `—`. Los valores pasan
+lo que la jugadora no tenga cargado se ve como `—`. Delante del nombre
+dibuja la **insignia del promedio** (`.player-rating`): el número (entero en
+escala 1-100) sobre un fondo con el color de la misma escala que los
+atributos (`ATTR_VALUE_COLORS`, la leyenda de "Atributos" sirve para las
+dos). El color se calcula sobre el número **ya redondeado que se ve**, así
+que un 89,6 se muestra 90 y es celeste, no verde oscuro. Debajo de la fila,
+`#dashboardRatingNote` aclara si el promedio incluye o no Portería. Los valores pasan
 por `escapeHtml` antes de entrar a `innerHTML`: el apodo es texto libre
 y la Sheet se puede editar desde afuera de la app, así que sin escapar
 un apodo con etiquetas HTML se ejecutaría en el navegador de quien mira
@@ -417,7 +433,7 @@ celular).
 
 ### `updateDashboardTrend(player, history)`
 
-Línea de tiempo del **promedio general**: un punto de Chart.js
+Línea de tiempo del **promedio** (el mismo de la insignia): un punto de Chart.js
 (`type: 'line'`) por cada entrada guardada del historial, más un punto
 final "Actual" con el promedio en vivo (para ver hacia dónde va la
 jugadora más allá de la última evaluación guardada). Usa
@@ -425,7 +441,7 @@ jugadora más allá de la última evaluación guardada). Usa
 alto fijo — sin eso, el canvas se estira a la altura de su contenedor
 flex y el gráfico queda desproporcionado.
 
-### `renderDashboardTimeline(history)`
+### `renderDashboardTimeline(history, player)`
 
 Lista completa del historial, más reciente primero. A diferencia de
 `renderDashboardDiff` (que siempre compara contra lo actual), acá cada
