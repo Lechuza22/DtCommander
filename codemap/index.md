@@ -1,6 +1,6 @@
 # index.html
 
-El único documento HTML de la app: define la estructura (header, seis
+El único documento HTML de la app: define la estructura (header, siete
 pestañas, formularios) que [js/app.js](js/app.md) rellena y manipula. No
 tiene lógica propia — es puro esqueleto con IDs y clases que el
 JavaScript busca por `document.getElementById` / `querySelectorAll`.
@@ -14,7 +14,7 @@ flowchart TD
     Header["header (#syncStatus, #logoutBtn)"] --> SheetsIntegration["js/sheets-integration.js: setStatus()"]
     Header --> AuthJS
 
-    TabsNav[".tab-btn (Evaluador / Jugadora / Formación / Táctica / Simulación / Entrenamiento)"] --> AppTabs["js/app.js: setupTabs()"]
+    TabsNav[".tab-btn (Evaluador / Jugadora / Formación / Táctica / Simulación / Secuencia / Entrenamiento)"] --> AppTabs["js/app.js: setupTabs()"]
 
     PanelEvaluador["#panel-evaluador"] --> PlayerSelect["#playerSelect"]
     PanelEvaluador --> AddRemove["#addPlayerBtn / #addPlayerForm / #removePlayerBtn"]
@@ -58,6 +58,14 @@ flowchart TD
     PanelSimulacion --> SimActions["#simActions / #actPiece / #actType / #addActionBtn / #simActionList / #simSeq / #recalcBtn"]
     PanelSimulacion --> SimPlay["#simPlayBtn / #simScrubber / #simSpeed / #simLoop / #simAuto / #simCaption"]
 
+    PanelSecuencia["#panel-secuencia"] --> SeqControls["#seqSelect / #newSeqBtn / #removeSeqBtn / #seqConfirm / #seqName / #saveSeqBtn / #exportSeqVideoBtn"]
+    PanelSecuencia --> SeqStart["#seqTemplate / #useSeqTemplateBtn / #seqFromTactic / #useSeqTacticBtn"]
+    PanelSecuencia --> SeqPlayers["#seqPlayers / #addSeqRivalBtn / #addSeqBallBtn / #seqAssignBtn"]
+    PanelSecuencia --> SeqField["#seqField (svg, lo dibuja el JS)"]
+    PanelSecuencia --> SeqModes["[data-seqmode] Armar/Grabar / [data-seqrec] Paso nuevo/Mismo paso / [data-seqtool] / #seqTracks"]
+    PanelSecuencia --> SeqSteps["#seqCursorTabs / #seqPlayBtn / #seqScrubber / #seqCaption"]
+    PanelSecuencia --> SeqTable["#seqMoves (tabla de movimientos)"]
+
     PanelEntrenamiento["#panel-entrenamiento"] --> TrainingTabs["#trainingPositionTabs"]
     PanelEntrenamiento --> TrainingSuggestions["#trainingSuggestions"]
     PanelEntrenamiento --> RubricForm["#openRubricBtn / #rubricForm / #rubricCriteria"]
@@ -70,7 +78,7 @@ flowchart TD
   anidados. `#appRoot` arranca con `hidden` puesto directamente en el
   HTML (no por JS) para que no haya un instante de "flash" de la app
   antes de que [js/auth.js](js/auth.md) decida si mostrarla. Todo lo
-  que describe el resto de este documento (header, tabs, las seis
+  que describe el resto de este documento (header, tabs, las siete
   pestañas) vive **dentro** de `#appRoot`.
 - **`#syncStatus`**: un punto (`●`) en el header cuyo color y `title`
   controla por completo [js/sheets-integration.js](js/sheets-integration.md)
@@ -115,15 +123,23 @@ flowchart TD
   `[hidden] { display: none !important; }` cerca del principio — sin
   ella, los formularios de arriba quedaban siempre visibles aunque el
   atributo `hidden` estuviera bien puesto (bug real que hubo en la app).
-- Carga siete `<script>` al final del `<body>`, en este orden:
+- Carga ocho `<script>` al final del `<body>`, en este orden:
   `auth.js`, Chart.js (CDN), `sheets-integration.js`, `app.js`, `tactica.js`,
-  `simulacion-media.js`, `simulacion.js`.
+  `simulacion-media.js`, `simulacion.js`, `secuencia.js`.
   `auth.js` va primero porque decide si el resto siquiera se ve; el
   resto del orden importa porque `app.js` usa `window.SheetsSync` y
   `Chart` al arrancar. `tactica.js` va después de `app.js` porque usa sus
   funciones y su estado, y `app.js` lo invoca con un `typeof` de por medio. Lo mismo con
   `simulacion.js`, que además necesita `simulacion-media.js` ya cargado
-  (usa `window.SimMedia` apenas arranca).
+  (usa `window.SimMedia` apenas arranca). `secuencia.js` va después de los dos
+  porque usa `window.SimMedia` y `window.SimTemplates` (las jugadas de ejemplo
+  de `simulacion.js`).
+- **`#seqField`** es otro `<svg>` vacío que dibuja el JS
+  ([js/secuencia.js](js/secuencia.md)). Los modos (Armar / Grabar) y el tipo de
+  paso (nuevo / mismo) son botones con `data-seqmode` y `data-seqrec`.
+  `#seqSelBar` **nunca** se oculta (mismo motivo que `#simSelBar`). La tabla de
+  movimientos `#seqMoves` la arma el JS: una tarjeta por paso y una fila por
+  movimiento.
 - **`#tacticField`** es un `<svg>` vacío (solo el `viewBox`): la cancha, las
   jugadoras y los dibujos los crea [js/tactica.js](js/tactica.md). La
   barra de herramientas (`.tactic-tools-card`) queda fija arriba en
@@ -157,5 +173,6 @@ flowchart TD
 | [js/tactica.js](js/tactica.md) | Pestaña Táctica (tablero libre) |
 | [js/simulacion.js](js/simulacion.md) | Pestaña Simulación (jugada animada en fases) |
 | [js/simulacion-media.js](js/simulacion-media.md) | Dibujo (SVG y canvas) y grabación de video |
+| [js/secuencia.js](js/secuencia.md) | Pestaña Secuencia (jugada grabada moviendo las piezas) |
 
 Ver también [GLOSSARY.md](GLOSSARY.md).
