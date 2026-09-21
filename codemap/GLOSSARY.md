@@ -363,3 +363,16 @@ valer y se quita.
 la calcula; se guarda como un item `action` de la simulación, con el
 casillero como unidad de movimiento (la cancha se divide en 3 columnas A-C
 por 4 filas 1-4 desde el arco propio).
+
+### movimiento grabado (frente a foto de una fase)
+
+Dos formas de guardar una jugada. En la de **fases**, cada fase es una foto de
+dónde está cada pieza y la animación calcula el camino entre dos fotos. En la
+**grabada**, lo que se guarda es cada movimiento (qué pieza, por qué camino,
+adónde llega) y las posiciones de cada momento se **derivan** aplicando los
+movimientos en orden. La ventaja de la segunda es que corregir un movimiento
+del principio acomoda solo todo lo que viene después.
+
+**En este proyecto:** la pestaña Simulación es la de fases y la pestaña
+Secuencia ([js/secuencia.js](js/secuencia.md)) es la grabada; `allStates()`
+deriva las posiciones de cada paso.
