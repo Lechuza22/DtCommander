@@ -26,7 +26,7 @@ flowchart TD
     PanelEvaluador --> ExportBtn["#exportCsvBtn"]
 
     PanelJugadora["#panel-jugadora"] --> DashSelect["#dashboardPlayerSelect"]
-    PanelJugadora --> DashInfo["#dashboardInfoCard / #dashboardPlayerInfo (datos básicos, solo lectura)"]
+    PanelJugadora --> DashInfo["#dashboardInfoCard / #dashboardPlayerInfo / #dashboardRatingNote (insignia del promedio y datos básicos, solo lectura)"]
     PanelJugadora --> DashLayout[".attrs-chart-layout (grid 2 columnas)"]
     DashLayout --> DashAttrs["#dashboardAttrsGrid + #attrColorLegend"]
     DashLayout --> DashRadar["#dashboardRadarChart (canvas)"]
