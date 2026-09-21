@@ -349,3 +349,17 @@ compartir por WhatsApp); los que no, entregan WebM.
 [js/simulacion-media.js](js/simulacion-media.md) pinta cada cuadro de la
 simulación en un canvas y lo graba; el botón "Descargar video (MP4)" de la
 pestaña Simulación lo usa.
+
+### acción de una transición
+
+En una simulación, una instrucción sobre una pieza (por ejemplo "Ine avanza 2
+casilleros" o "pase a Agos") que la app convierte en un destino concreto y
+lo escribe en la fase siguiente. A diferencia de un dato que se guarda tal
+cual, la acción se calcula a partir de dónde estaba la pieza en la fase
+anterior; por eso, si la pieza se mueve a mano después, la acción deja de
+valer y se quita.
+
+**En este proyecto:** `applyAction()` en [js/simulacion.js](js/simulacion.md)
+la calcula; se guarda como un item `action` de la simulación, con el
+casillero como unidad de movimiento (la cancha se divide en 3 columnas A-C
+por 4 filas 1-4 desde el arco propio).
