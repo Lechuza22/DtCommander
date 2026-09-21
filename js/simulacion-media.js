@@ -31,6 +31,21 @@
     GOAL_X: { left: 128, center: 150, right: 172 },
     GOAL_Y: { shot: 16, goal: 5 }
   };
+  // Los arcos van pegados a las líneas de fondo, en el margen: boca de 56 de ancho (x 122-178).
+  // Una pelota que termina adentro de uno es gol.
+  const GOAL_BOX = { x0: 122, x1: 178, depth: 8 };
+  function goalSide(x, y) {
+    if (x < GOAL_BOX.x0 || x > GOAL_BOX.x1) return null;
+    if (y <= 10) return 'top';
+    if (y >= 390) return 'bottom';
+    return null;
+  }
+  function goalRect(side) {
+    return side === 'top'
+      ? { y0: 10, y1: 10 - GOAL_BOX.depth }
+      : { y0: 390, y1: 390 + GOAL_BOX.depth };
+  }
+
   const DRAW_ORDER = { grid: -2, zone: -1, arrow: 0, track: 0, player: 1, rival: 1, ball: 2, text: 3, handle: 5 };
 
   // Rectángulo de un casillero: c = columna 0-2, r = fila 1-4 contada desde el arco propio.
@@ -129,6 +144,16 @@
     svgEl('circle', Object.assign({ cx: 150, cy: 200, r: 40 }, line), parent);
     svgEl('rect', Object.assign({ x: 90, y: 10, width: 120, height: 55 }, line), parent);
     svgEl('rect', Object.assign({ x: 90, y: 335, width: 120, height: 55 }, line), parent);
+    ['top', 'bottom'].forEach(side => {
+      const g = goalRect(side);
+      svgEl('path', {
+        d: `M${GOAL_BOX.x0},${g.y0} L${GOAL_BOX.x0},${g.y1} L${GOAL_BOX.x1},${g.y1} L${GOAL_BOX.x1},${g.y0} Z`,
+        fill: 'rgba(255,255,255,0.2)', stroke: '#ffffff', 'stroke-width': 2, 'stroke-linejoin': 'round'
+      }, parent);
+      for (let x = GOAL_BOX.x0 + 8; x < GOAL_BOX.x1; x += 8) {
+        svgEl('line', { x1: x, y1: g.y0, x2: x, y2: g.y1, stroke: 'rgba(255,255,255,0.4)', 'stroke-width': 0.8 }, parent);
+      }
+    });
   }
 
   function haloSvg(parent, text, attrs) {
@@ -331,6 +356,29 @@
     ctx.stroke();
     ctx.strokeRect(90, 10, 120, 55);
     ctx.strokeRect(90, 335, 120, 55);
+    ['top', 'bottom'].forEach(side => {
+      const g = goalRect(side);
+      ctx.beginPath();
+      ctx.moveTo(GOAL_BOX.x0, g.y0);
+      ctx.lineTo(GOAL_BOX.x0, g.y1);
+      ctx.lineTo(GOAL_BOX.x1, g.y1);
+      ctx.lineTo(GOAL_BOX.x1, g.y0);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(255,255,255,0.2)';
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.lineJoin = 'round';
+      ctx.strokeStyle = '#ffffff';
+      ctx.stroke();
+      ctx.lineWidth = 0.8;
+      ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+      for (let x = GOAL_BOX.x0 + 8; x < GOAL_BOX.x1; x += 8) {
+        ctx.beginPath();
+        ctx.moveTo(x, g.y0);
+        ctx.lineTo(x, g.y1);
+        ctx.stroke();
+      }
+    });
   }
 
   function drawItemsCanvas(ctx, items) {
@@ -658,6 +706,6 @@
 
   window.SimMedia = {
     THEME, VIDEO, svgEl, drawPitchSvg, renderItemsSvg, drawVideoFrame, recordVideo, videoSupported, loadCrest,
-    cellRect, cellName, simplifyPath, pointAlong, deliverFile
+    cellRect, cellName, simplifyPath, pointAlong, deliverFile, goalSide
   };
 })();
