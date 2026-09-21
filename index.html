@@ -31,6 +31,7 @@
     <button class="tab-btn active" data-tab="panel-evaluador">Evaluador</button>
     <button class="tab-btn" data-tab="panel-jugadora">Jugadora</button>
     <button class="tab-btn" data-tab="panel-formacion">Formación</button>
+    <button class="tab-btn" data-tab="panel-tactica">Táctica</button>
     <button class="tab-btn" data-tab="panel-entrenamiento">Entrenamiento</button>
   </nav>
 
@@ -213,6 +214,78 @@
       </div>
     </section>
 
+    <!-- ===== TÁCTICA (tablero libre para planear jugadas) ===== -->
+    <section id="panel-tactica" class="tab-panel">
+      <div class="card">
+        <div class="roster-controls">
+          <select id="tacticSelect" title="Tácticas guardadas"></select>
+          <button id="newTacticBtn" class="btn">+ Táctica</button>
+          <button id="removeTacticBtn" class="btn btn-danger">Eliminar</button>
+        </div>
+        <div id="tacticConfirm" class="add-player-form" hidden>
+          <span>Tenés cambios sin guardar en esta táctica.</span>
+          <button id="tacticConfirmSave" class="btn">Guardar y seguir</button>
+          <button id="tacticConfirmDiscard" class="btn btn-danger">Descartar</button>
+          <button id="tacticConfirmCancel" class="btn btn-secondary">Cancelar</button>
+        </div>
+        <div class="add-player-form">
+          <input type="text" id="tacticName" placeholder="Nombre de la táctica" maxlength="60">
+          <button id="saveTacticBtn" class="btn">Guardar</button>
+          <button id="saveTacticCopyBtn" class="btn btn-secondary">Guardar como copia</button>
+          <button id="exportTacticBtn" class="btn btn-secondary">Exportar imagen</button>
+          <span id="tacticStatus" class="hint"></span>
+          <span id="tacticError" class="form-error"></span>
+        </div>
+      </div>
+
+      <div class="card tactic-tools-card">
+        <div class="tactic-toolbar">
+          <div class="tactic-group" id="tacticTools">
+            <button type="button" class="tool-btn" data-tool="move">Mover</button>
+            <button type="button" class="tool-btn" data-tool="arrow">Flecha</button>
+            <button type="button" class="tool-btn" data-tool="pencil">Lápiz</button>
+            <button type="button" class="tool-btn" data-tool="text">Texto</button>
+            <button type="button" class="tool-btn" data-tool="ball">Pelota</button>
+            <button type="button" class="tool-btn" data-tool="erase">Borrador</button>
+          </div>
+          <div class="tactic-group tactic-options">
+            <div class="tactic-palette" id="tacticPalette" aria-label="Color"></div>
+            <label class="tactic-check"><input type="checkbox" id="tacticDash"> Punteada</label>
+          </div>
+          <div class="tactic-group tactic-text-row" id="tacticTextRow" hidden>
+            <input type="text" id="tacticText" class="tactic-text-input" placeholder="Texto para la cancha" maxlength="80">
+          </div>
+          <div class="tactic-group">
+            <button type="button" class="tool-btn" id="tacticUndo">Deshacer</button>
+            <button type="button" class="tool-btn" id="tacticRedo">Rehacer</button>
+            <button type="button" class="tool-btn" id="tacticDelete">Borrar selección</button>
+            <button type="button" class="tool-btn" id="tacticClear">Vaciar</button>
+          </div>
+        </div>
+      </div>
+      <p class="hint tactic-hint" id="tacticHint"></p>
+
+      <div class="field-layout">
+        <div class="card available-panel">
+          <h2>Jugadoras</h2>
+          <div id="tacticPlayers" class="available-list"></div>
+          <div class="tactic-team-actions">
+            <button type="button" id="addRivalBtn" class="btn btn-secondary">+ Rival</button>
+            <button type="button" id="importFormationBtn" class="btn btn-secondary">Traer de Formación</button>
+          </div>
+          <div class="position-legend">
+            <span class="legend-item"><span class="legend-dot" style="background:#2563eb"></span>Nuestro equipo</span>
+            <span class="legend-item"><span class="legend-dot" style="background:#dc2626"></span>Rival</span>
+          </div>
+          <p class="hint" id="tacticPlayersHint">Arrastrá una jugadora a la cancha (o tocala para ponerla). Para sacarla, arrastrala afuera de la cancha.</p>
+        </div>
+
+        <div class="card field-panel">
+          <svg id="tacticField" viewBox="0 0 300 400" preserveAspectRatio="xMidYMid meet"></svg>
+        </div>
+      </div>
+    </section>
+
     <!-- ===== ENTRENAMIENTO ===== -->
     <section id="panel-entrenamiento" class="tab-panel">
       <div class="card">
@@ -262,5 +335,6 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
   <script src="js/sheets-integration.js"></script>
   <script src="js/app.js"></script>
+  <script src="js/tactica.js"></script>
 </body>
 </html>
