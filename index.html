@@ -211,6 +211,8 @@
             <circle cx="150" cy="200" r="40" class="field-line-fill"></circle>
             <rect x="90" y="10" width="120" height="55" class="field-line-fill"></rect>
             <rect x="90" y="335" width="120" height="55" class="field-line-fill"></rect>
+            <path d="M122,10 L122,2 L178,2 L178,10 Z" class="field-goal"></path>
+            <path d="M122,390 L122,398 L178,398 L178,390 Z" class="field-goal"></path>
           </svg>
         </div>
       </div>
@@ -381,34 +383,7 @@
               <input type="range" id="phaseDur" min="0.5" max="6" step="0.5" value="2">
             </label>
 
-            <div class="sim-actions" id="simActions">
-              <div class="sim-actions-head">
-                <strong>Acciones de esta transición</strong>
-                <label class="tactic-check" id="simSeqRow"><input type="checkbox" id="simSeq"> Una acción tras otra</label>
-                <button type="button" class="tool-btn" id="recalcBtn" title="Vuelve a calcular las acciones desde la fase anterior">Recalcular</button>
-              </div>
-              <p class="hint" id="simActionsHint"></p>
-              <div class="sim-row sim-actrow" id="simActionForm">
-                <select id="actPiece" aria-label="Pieza"></select>
-                <select id="actType" aria-label="Acción"></select>
-                <select id="actN" aria-label="Casilleros">
-                  <option value="1">1</option>
-                  <option value="2">2</option>
-                  <option value="3">3</option>
-                </select>
-                <span id="actNUnit" class="hint">casilleros</span>
-                <select id="actZone" aria-label="Zona"></select>
-                <select id="actTarget" aria-label="Destino"></select>
-                <select id="actSide" aria-label="Palo">
-                  <option value="left">Palo izquierdo</option>
-                  <option value="center" selected>Al medio</option>
-                  <option value="right">Palo derecho</option>
-                </select>
-                <button type="button" class="btn" id="addActionBtn">Agregar acción</button>
-              </div>
-              <ol class="sim-actionlist" id="simActionList"></ol>
-              <p class="hint">Grilla de casilleros: columnas A, B, C (de izquierda a derecha) y filas 1 a 4 desde tu arco: 1 defensa baja, 2 defensa alta, 3 ataque bajo, 4 ataque alto.</p>
-            </div>
+            <p class="hint">Grilla de casilleros (con "Ver grilla" o la herramienta Zona): columnas A, B, C de izquierda a derecha y filas 1 a 4 desde tu arco (1 defensa baja, 2 defensa alta, 3 ataque bajo, 4 ataque alto). Si la pelota entra en un arco es gol y la jugada termina.</p>
 
             <div class="sim-row sim-play">
               <button type="button" class="btn" id="simPlayBtn">Reproducir</button>
