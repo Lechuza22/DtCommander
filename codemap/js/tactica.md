@@ -6,7 +6,9 @@ lápiz, texto y pelota. Es distinto de Formación: allá se define *quién
 juega dónde* en un partido; acá se dibuja *cómo se juega una jugada*. Cada
 táctica se guarda con nombre (ver [[táctica (tactic)]] en el
 [Glosario](../GLOSSARY.md)), forma un historial que se puede reabrir, y se
-puede exportar como imagen para mandarla por WhatsApp.
+puede exportar como imagen para mandarla por WhatsApp. Para una jugada
+animada en fases (y descargable como video) ver
+[Simulación](simulacion.md).
 
 Está dentro de una función que se ejecuta sola (IIFE) para no chocar con
 los nombres de [js/app.js](app.md), y solo expone `window.setupTactica` y
