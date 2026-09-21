@@ -55,7 +55,6 @@ flowchart TD
     PanelSimulacion --> SimField["#simField (svg, lo dibuja el JS)"]
     PanelSimulacion --> SimPhases["#simPhaseTabs / #addPhaseBtn / #phaseName / #phaseNote / #phaseDur"]
     PanelSimulacion --> SimTools["#simSelBar / [data-simtool] / #simColors / #simGrid / #simTextInput"]
-    PanelSimulacion --> SimActions["#simActions / #actPiece / #actType / #addActionBtn / #simActionList / #simSeq / #recalcBtn"]
     PanelSimulacion --> SimPlay["#simPlayBtn / #simScrubber / #simSpeed / #simLoop / #simAuto / #simCaption"]
 
     PanelSecuencia["#panel-secuencia"] --> SeqControls["#seqSelect / #newSeqBtn / #removeSeqBtn / #seqConfirm / #seqName / #saveSeqBtn / #exportSeqVideoBtn"]
@@ -151,12 +150,12 @@ flowchart TD
   ([js/simulacion.js](js/simulacion.md)). Debajo, el panel de fases:
   `#simPhaseTabs` (una pestaña por fase, que se desliza de costado),
   nombre, nota y tiempo de la fase actual, y los controles de reproducción.
-  `#simSelBar` (acciones sobre la ficha seleccionada) **nunca** se oculta:
+  `#simSelBar` (qué hacer con la ficha seleccionada) **nunca** se oculta:
   sin nada elegido muestra una ayuda, para no cambiar el alto de la página al
   tocar una ficha (ver [css/styles.md](css/styles.md)). `#simCaption` (texto de
-  la fase mientras se reproduce) arranca `hidden`. `#simActions` es el panel de
-  acciones de la transición (el formulario se oculta en la primera fase, que no
-  tiene transición); `#simTextInput` vive dentro de la barra. `#simAssignBtn`
+  la fase mientras se reproduce) arranca `hidden`. Un texto de ayuda explica
+  la grilla de casilleros y la regla del gol; `#simTextInput` vive dentro de
+  la barra. `#simAssignBtn`
   aparece solo cuando hay puestos de una jugada de ejemplo sin jugadora.
   Con la clase `sim-playing` en `#panel-simulacion` la lista de jugadoras
   queda deshabilitada.
