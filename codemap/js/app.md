@@ -156,18 +156,17 @@ items[] }`) y mismos mecanismos: `sanitizeSimulations` limpia todo lo que
 llega de afuera y `mergeSimulations` (que usa `mergeById`) une lo local con
 la Sheet por `updatedAt`, con borrado "blando".
 
-Los `items` son una lista plana con diez tipos (los últimos tres son de la pestaña Secuencia, abajo): `phase` (una por fase:
-`ph`, `name`, `note`, `dur` en segundos, entre 0,5 y 6, y `seq`); `player`,
+Los `items` son una lista plana con nueve tipos (los últimos tres son de la pestaña Secuencia, abajo): `phase` (una por fase:
+`ph`, `name`, `note` y `dur` en segundos, entre 0,5 y 6); `player`,
 `rival` y `ball` (con su fase `ph` y, la pelota, `carrier`: quién la lleva);
-`text` (cuadro de texto en una fase); `zone` (casillero sombreado: columna
-`zc` 0-2, fila `zr` 1-4); y `action` (una acción de la transición hacia esa
-fase: `who`, `act`, `dir`, `n`, `zone`, `target`, `side`).
-`sanitizeSimItems` deja el número de fase entre 0 y `MAX_SIM_PHASES - 1`
-(12 fases), limita `n` a 1-3, acepta solo acciones, direcciones y palos
-conocidos (`SIM_ACTIONS`, `SIM_DIRS`, `SIM_SIDES`), descarta casilleros
-fuera de la grilla, valida los colores y descarta lo inválido. La lista plana
-permite guardar todo en el mismo formato de hoja que las tácticas, sin
-cambiar el Apps Script.
+`text` (cuadro de texto en una fase); y `zone` (casillero sombreado: columna
+`zc` 0-2, fila `zr` 1-4).
+`sanitizeSimItems` acepta solo los tipos de `SIM_ITEM_TYPES` (un item `action`
+de una versión anterior, cuando Simulación tenía acciones de transición, se
+descarta al leer), deja el número de fase entre 0 y `MAX_SIM_PHASES - 1`
+(12 fases), descarta casilleros fuera de la grilla, valida los colores y
+descarta lo inválido. La lista plana permite guardar todo en el mismo formato
+de hoja que las tácticas, sin cambiar el Apps Script.
 
 La pestaña Secuencia ([js/secuencia.js](secuencia.md)) guarda en esta misma
 lista con otro modelo: un item `seq` (la marca), `step` (`ph` = número de
