@@ -42,7 +42,8 @@ sea fácil ubicar qué tocar.
   `.suggestions-radar` (contenedor de alto fijo 200px del radar
   compacto), `.field-bg` / `.field-line` / `.field-line-fill` (dibujo de
   la cancha en SVG), `.player-token` / `.token-circle` / `.token-label`
-  (jugadora ubicada).
+  (jugadora ubicada; la ficha se achicó al 80%: círculo de radio 12,8, letra de
+  9 y borde de 1,6).
 - **Táctica**: `.tactic-tools-card` / `.tactic-toolbar` / `.tactic-group`
   (barra de herramientas; en celular es compacta, fija arriba y cada fila se
   desliza de costado), `.tool-btn` (con `.active`; la regla del activo
