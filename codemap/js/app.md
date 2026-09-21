@@ -153,12 +153,18 @@ items[] }`) y mismos mecanismos: `sanitizeSimulations` limpia todo lo que
 llega de afuera y `mergeSimulations` (que usa `mergeById`) une lo local con
 la Sheet por `updatedAt`, con borrado "blando".
 
-Los `items` son una lista plana con cuatro tipos: `phase` (una por fase:
-`ph`, `name`, `note`, `dur` en segundos, entre 0,5 y 6), y `player`,
-`rival` y `ball` (con su fase `ph` y, la pelota, `carrier`: quién la lleva).
+Los `items` son una lista plana con siete tipos: `phase` (una por fase:
+`ph`, `name`, `note`, `dur` en segundos, entre 0,5 y 6, y `seq`); `player`,
+`rival` y `ball` (con su fase `ph` y, la pelota, `carrier`: quién la lleva);
+`text` (cuadro de texto en una fase); `zone` (casillero sombreado: columna
+`zc` 0-2, fila `zr` 1-4); y `action` (una acción de la transición hacia esa
+fase: `who`, `act`, `dir`, `n`, `zone`, `target`, `side`).
 `sanitizeSimItems` deja el número de fase entre 0 y `MAX_SIM_PHASES - 1`
-(12 fases) y descarta lo inválido. La lista plana permite guardar las
-fases en el mismo formato de hoja que las tácticas.
+(12 fases), limita `n` a 1-3, acepta solo acciones, direcciones y palos
+conocidos (`SIM_ACTIONS`, `SIM_DIRS`, `SIM_SIDES`), descarta casilleros
+fuera de la grilla, valida los colores y descarta lo inválido. La lista plana
+permite guardar todo en el mismo formato de hoja que las tácticas, sin
+cambiar el Apps Script.
 
 ### `SCORE_SCALE` / `toScore(raw)` / `formatScore(score)` / `formatAttrValue(raw)`
 
