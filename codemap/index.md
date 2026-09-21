@@ -1,6 +1,6 @@
 # index.html
 
-El único documento HTML de la app: define la estructura (header, cinco
+El único documento HTML de la app: define la estructura (header, seis
 pestañas, formularios) que [js/app.js](js/app.md) rellena y manipula. No
 tiene lógica propia — es puro esqueleto con IDs y clases que el
 JavaScript busca por `document.getElementById` / `querySelectorAll`.
@@ -14,7 +14,7 @@ flowchart TD
     Header["header (#syncStatus, #logoutBtn)"] --> SheetsIntegration["js/sheets-integration.js: setStatus()"]
     Header --> AuthJS
 
-    TabsNav[".tab-btn (Evaluador / Jugadora / Formación / Táctica / Entrenamiento)"] --> AppTabs["js/app.js: setupTabs()"]
+    TabsNav[".tab-btn (Evaluador / Jugadora / Formación / Táctica / Simulación / Entrenamiento)"] --> AppTabs["js/app.js: setupTabs()"]
 
     PanelEvaluador["#panel-evaluador"] --> PlayerSelect["#playerSelect"]
     PanelEvaluador --> AddRemove["#addPlayerBtn / #addPlayerForm / #removePlayerBtn"]
@@ -48,6 +48,14 @@ flowchart TD
     PanelTactica --> TacticPlayers["#tacticPlayers / #addRivalBtn / #importFormationBtn"]
     PanelTactica --> TacticField["#tacticField (svg, lo dibuja el JS)"]
 
+    PanelSimulacion["#panel-simulacion"] --> SimControls["#simSelect / #newSimBtn / #removeSimBtn / #simConfirm"]
+    PanelSimulacion --> SimSave["#simName / #saveSimBtn / #saveSimCopyBtn / #exportVideoBtn"]
+    PanelSimulacion --> SimStart["#simTemplate / #useTemplateBtn / #simFromTactic / #useTacticBtn"]
+    PanelSimulacion --> SimPlayers["#simPlayers / #addSimRivalBtn / #addSimBallBtn / #simAssignBtn"]
+    PanelSimulacion --> SimField["#simField (svg, lo dibuja el JS)"]
+    PanelSimulacion --> SimPhases["#simPhaseTabs / #addPhaseBtn / #phaseName / #phaseNote / #phaseDur"]
+    PanelSimulacion --> SimPlay["#simPlayBtn / #simScrubber / #simSpeed / #simLoop / #simAuto / #simCaption"]
+
     PanelEntrenamiento["#panel-entrenamiento"] --> TrainingTabs["#trainingPositionTabs"]
     PanelEntrenamiento --> TrainingSuggestions["#trainingSuggestions"]
     PanelEntrenamiento --> RubricForm["#openRubricBtn / #rubricForm / #rubricCriteria"]
@@ -60,7 +68,7 @@ flowchart TD
   anidados. `#appRoot` arranca con `hidden` puesto directamente en el
   HTML (no por JS) para que no haya un instante de "flash" de la app
   antes de que [js/auth.js](js/auth.md) decida si mostrarla. Todo lo
-  que describe el resto de este documento (header, tabs, las cinco
+  que describe el resto de este documento (header, tabs, las seis
   pestañas) vive **dentro** de `#appRoot`.
 - **`#syncStatus`**: un punto (`●`) en el header cuyo color y `title`
   controla por completo [js/sheets-integration.js](js/sheets-integration.md)
@@ -105,12 +113,15 @@ flowchart TD
   `[hidden] { display: none !important; }` cerca del principio — sin
   ella, los formularios de arriba quedaban siempre visibles aunque el
   atributo `hidden` estuviera bien puesto (bug real que hubo en la app).
-- Carga cinco `<script>` al final del `<body>`, en este orden:
-  `auth.js`, Chart.js (CDN), `sheets-integration.js`, `app.js`, `tactica.js`.
+- Carga siete `<script>` al final del `<body>`, en este orden:
+  `auth.js`, Chart.js (CDN), `sheets-integration.js`, `app.js`, `tactica.js`,
+  `simulacion-media.js`, `simulacion.js`.
   `auth.js` va primero porque decide si el resto siquiera se ve; el
   resto del orden importa porque `app.js` usa `window.SheetsSync` y
   `Chart` al arrancar. `tactica.js` va después de `app.js` porque usa sus
-  funciones y su estado, y `app.js` lo invoca con un `typeof` de por medio.
+  funciones y su estado, y `app.js` lo invoca con un `typeof` de por medio. Lo mismo con
+  `simulacion.js`, que además necesita `simulacion-media.js` ya cargado
+  (usa `window.SimMedia` apenas arranca).
 - **`#tacticField`** es un `<svg>` vacío (solo el `viewBox`): la cancha, las
   jugadoras y los dibujos los crea [js/tactica.js](js/tactica.md). La
   barra de herramientas (`.tactic-tools-card`) queda fija arriba en
@@ -118,6 +129,15 @@ flowchart TD
   escribir texto) arranca `hidden` y solo se muestra con la herramienta
   Texto o con un texto seleccionado. `#tacticConfirm` es la barra inline
   "cambios sin guardar" (mismo patrón que los otros formularios inline).
+- **`#simField`** también es un `<svg>` vacío que dibuja el JS
+  ([js/simulacion.js](js/simulacion.md)). Debajo, el panel de fases:
+  `#simPhaseTabs` (una pestaña por fase, que se desliza de costado),
+  nombre, nota y tiempo de la fase actual, y los controles de reproducción.
+  `#simSelBar` (acciones sobre la ficha seleccionada) y `#simCaption` (texto
+  de la fase mientras se reproduce) arrancan `hidden`. `#simAssignBtn`
+  aparece solo cuando hay puestos de una jugada de ejemplo sin jugadora.
+  Con la clase `sim-playing` en `#panel-simulacion` la lista de jugadoras
+  queda deshabilitada.
 
 ## Dependencias externas
 
@@ -129,5 +149,7 @@ flowchart TD
 | [js/sheets-integration.js](js/sheets-integration.md) | Sync con Google Sheets |
 | [js/app.js](js/app.md) | Estado, Evaluador, Jugadora, Formación y Entrenamiento |
 | [js/tactica.js](js/tactica.md) | Pestaña Táctica (tablero libre) |
+| [js/simulacion.js](js/simulacion.md) | Pestaña Simulación (jugada animada en fases) |
+| [js/simulacion-media.js](js/simulacion-media.md) | Dibujo (SVG y canvas) y grabación de video |
 
 Ver también [GLOSSARY.md](GLOSSARY.md).
