@@ -731,6 +731,66 @@ input[type="range"] { width: 100%; }
 #panel-simulacion.sim-playing .sim-actions,
 #panel-simulacion.sim-playing .sim-selbar { opacity: 0.55; pointer-events: none; }
 
+/* ===== Secuencia ===== */
+#panel-secuencia { overflow-anchor: none; }
+
+#seqField {
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+#seqField .t-item { cursor: grab; }
+#panel-secuencia.seq-playing #seqField .t-item { cursor: default; }
+#panel-secuencia.seq-playing .available-panel { opacity: 0.55; pointer-events: none; }
+#panel-secuencia.seq-playing .seq-modes,
+
+#panel-secuencia.seq-playing .sim-tools,
+#panel-secuencia.seq-playing .sim-selbar,
+#panel-secuencia.seq-playing .seq-moves { opacity: 0.55; pointer-events: none; }
+
+.seq-modes { margin-top: 0.75rem; gap: 0.4rem 0.5rem; }
+.seq-sep { width: 1px; height: 22px; background: var(--border); margin: 0 0.3rem; }
+
+.seq-moves { display: flex; flex-direction: column; gap: 0.6rem; }
+.seq-step {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  padding: 0.5rem 0.6rem;
+}
+.seq-step.active { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); }
+.seq-stephead { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.8rem; margin-bottom: 0.4rem; }
+.seq-dur { display: flex; align-items: center; gap: 0.25rem; font-size: 13px; color: #556; }
+.seq-dur input { width: 4.2rem; padding: 0.2rem 0.4rem; border-radius: 6px; border: 1px solid var(--border); font-size: 13px; }
+.seq-move {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.6rem;
+  padding: 0.35rem 0.5rem;
+  margin-top: 0.3rem;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.seq-move.selected { border-color: var(--primary); background: #eef5fc; }
+.seq-who { min-width: 6.5rem; font-weight: 600; white-space: nowrap; }
+.seq-what { flex: 1 1 8rem; min-width: 0; color: #334; }
+.seq-kind { min-width: 7rem; }
+.seq-text {
+  flex: 2 1 12rem;
+  min-width: 0;
+  padding: 0.3rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  font-size: 13px;
+}
+
 .sim-panel { min-width: 0; }
 
 .sim-start { display: flex; flex-direction: column; gap: 0.6rem; }
