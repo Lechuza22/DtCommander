@@ -31,7 +31,7 @@
     GOAL_X: { left: 128, center: 150, right: 172 },
     GOAL_Y: { shot: 16, goal: 5 }
   };
-  const DRAW_ORDER = { grid: -2, zone: -1, arrow: 0, player: 1, rival: 1, ball: 2, text: 3 };
+  const DRAW_ORDER = { grid: -2, zone: -1, arrow: 0, track: 0, player: 1, rival: 1, ball: 2, text: 3, handle: 5 };
 
   // Rectángulo de un casillero: c = columna 0-2, r = fila 1-4 contada desde el arco propio.
   function cellRect(c, r) {
@@ -60,6 +60,55 @@
       left: [bx - uy * half, by + ux * half],
       right: [bx + uy * half, by - ux * half]
     };
+  }
+
+  // Un recorrido es una lista de puntos [x, y]. La flecha apunta en la dirección de los
+  // últimos ~8 de camino, así una curva que termina lenta igual tiene la punta bien orientada.
+  function trackParts(points) {
+    const end = points[points.length - 1];
+    let ref = points[0];
+    for (let i = points.length - 2; i >= 0; i--) {
+      ref = points[i];
+      if (Math.hypot(end[0] - ref[0], end[1] - ref[1]) >= 8) break;
+    }
+    const geo = arrowGeometry({ x1: ref[0], y1: ref[1], x2: end[0], y2: end[1] });
+    const body = points.slice(0, -1).concat([[geo.bx + geo.ux, geo.by + geo.uy]]);
+    return { geo, body, end };
+  }
+
+  // Punto del recorrido a una fracción (0-1) de su largo, para pegar el número.
+  function pointAlong(points, frac) {
+    let total = 0;
+    for (let i = 1; i < points.length; i++) total += Math.hypot(points[i][0] - points[i - 1][0], points[i][1] - points[i - 1][1]);
+    let want = total * frac;
+    for (let i = 1; i < points.length; i++) {
+      const seg = Math.hypot(points[i][0] - points[i - 1][0], points[i][1] - points[i - 1][1]);
+      if (want <= seg || i === points.length - 1) {
+        const t = seg ? Math.min(1, want / seg) : 0;
+        return [points[i - 1][0] + (points[i][0] - points[i - 1][0]) * t, points[i - 1][1] + (points[i][1] - points[i - 1][1]) * t];
+      }
+      want -= seg;
+    }
+    return points[0];
+  }
+
+  // Ramer-Douglas-Peucker: deja el trazo con los puntos que conservan su forma.
+  function simplifyPath(points, epsilon) {
+    if (points.length < 3) return points;
+    const [x1, y1] = points[0];
+    const [x2, y2] = points[points.length - 1];
+    const segLen = Math.hypot(x2 - x1, y2 - y1);
+    let maxDist = 0;
+    let index = 0;
+    for (let i = 1; i < points.length - 1; i++) {
+      const [px, py] = points[i];
+      const dist = segLen === 0
+        ? Math.hypot(px - x1, py - y1)
+        : Math.abs((y2 - y1) * px - (x2 - x1) * py + x2 * y1 - y2 * x1) / segLen;
+      if (dist > maxDist) { maxDist = dist; index = i; }
+    }
+    if (maxDist <= epsilon) return [points[0], points[points.length - 1]];
+    return simplifyPath(points.slice(0, index + 1), epsilon).slice(0, -1).concat(simplifyPath(points.slice(index), epsilon));
   }
 
   // ------------------------------------------------------------------
@@ -147,6 +196,48 @@
     if (selected) selectionBox(g, item.x - w / 2, item.y - size, item.x + w / 2, item.y + 4);
   }
 
+  // Recorrido de una pieza (item.points) con su flecha y el número del paso (item.badge).
+  function trackSvg(g, item) {
+    const pts = item.points;
+    if (!pts || pts.length < 2) return;
+    const parts = trackParts(pts);
+    const str = points => points.map(p => `${Math.round(p[0] * 10) / 10},${Math.round(p[1] * 10) / 10}`).join(' ');
+    if (!item._auto) {
+      svgEl('polyline', {
+        points: str(pts), fill: 'none', stroke: 'transparent', 'stroke-width': 14,
+        'stroke-linecap': 'round', 'stroke-linejoin': 'round'
+      }, g);
+    }
+    svgEl('polyline', {
+      points: str(parts.body), fill: 'none', stroke: item.color, 'stroke-width': item.selected ? 3.8 : 2.6,
+      'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-dasharray': item.dash ? '6 5' : 'none',
+      'pointer-events': 'none'
+    }, g);
+    const r1 = v => Math.round(v * 10) / 10;
+    svgEl('polygon', {
+      points: `${r1(parts.end[0])},${r1(parts.end[1])} ${r1(parts.geo.left[0])},${r1(parts.geo.left[1])} ${r1(parts.geo.right[0])},${r1(parts.geo.right[1])}`,
+      fill: item.color, 'pointer-events': 'none'
+    }, g);
+    if (item.badge) {
+      const b = pointAlong(pts, 0.3);
+      svgEl('circle', { cx: r1(b[0]), cy: r1(b[1]), r: 7.5, fill: '#111827', stroke: item.color, 'stroke-width': 1.6 }, g);
+      const t = svgEl('text', {
+        x: r1(b[0]), y: r1(b[1]) + 3.2, 'text-anchor': 'middle', fill: '#ffffff', 'font-size': 9, 'font-weight': 700,
+        'font-family': THEME.FONT, 'pointer-events': 'none'
+      }, g);
+      t.textContent = item.badge;
+    }
+  }
+
+  // La punta arrastrable de un recorrido elegido. Va en su propia capa, por encima de las
+  // fichas: si no, la ficha que termina justo ahí la taparía y se la agarraría a ella.
+  function handleSvg(g, item) {
+    svgEl('circle', { cx: item.x, cy: item.y, r: 12, fill: 'transparent', 'data-handle': 'end' }, g);
+    svgEl('circle', {
+      cx: item.x, cy: item.y, r: 6, fill: '#ffffff', stroke: '#111827', 'stroke-width': 1.5, 'data-handle': 'end'
+    }, g);
+  }
+
   function zoneSvg(g, item) {
     const r = cellRect(item.zc, item.zr);
     svgEl('rect', {
@@ -201,6 +292,8 @@
       if (opacity !== undefined && opacity < 1) g.setAttribute('opacity', clamp01(opacity));
       const selected = !auto && item.id === o.selectedId;
       if (item.type === 'arrow') arrowSvg(g, item);
+      else if (item.type === 'track') trackSvg(g, item);
+      else if (item.type === 'handle') handleSvg(g, item);
       else if (item.type === 'ball') ballSvg(g, item, selected);
       else if (item.type === 'text') textSvg(g, item, selected);
       else if (item.type === 'zone') zoneSvg(g, item);
@@ -244,7 +337,9 @@
     sorted(items).forEach(item => {
       ctx.save();
       ctx.globalAlpha = item._o === undefined ? 1 : clamp01(item._o);
-      if (item.type === 'zone') {
+      if (item.type === 'handle') {
+        // solo se dibuja en pantalla, nunca en el video
+      } else if (item.type === 'zone') {
         const r = cellRect(item.zc, item.zr);
         ctx.globalAlpha *= 0.28;
         ctx.fillStyle = item.color;
@@ -272,6 +367,40 @@
           for (let r = 1; r <= gr.rows; r++) {
             const rect = cellRect(c, r);
             ctx.fillText(cellName(c, r), rect.x + 5, rect.y + 12);
+          }
+        }
+      } else if (item.type === 'track') {
+        if (item.points && item.points.length > 1) {
+          const parts = trackParts(item.points);
+          ctx.strokeStyle = item.color;
+          ctx.fillStyle = item.color;
+          ctx.lineWidth = 2.6;
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
+          ctx.setLineDash(item.dash ? [6, 5] : []);
+          ctx.beginPath();
+          parts.body.forEach((p, i) => { if (i === 0) ctx.moveTo(p[0], p[1]); else ctx.lineTo(p[0], p[1]); });
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.beginPath();
+          ctx.moveTo(parts.end[0], parts.end[1]);
+          ctx.lineTo(parts.geo.left[0], parts.geo.left[1]);
+          ctx.lineTo(parts.geo.right[0], parts.geo.right[1]);
+          ctx.closePath();
+          ctx.fill();
+          if (item.badge) {
+            const b = pointAlong(item.points, 0.3);
+            ctx.beginPath();
+            ctx.arc(b[0], b[1], 7.5, 0, Math.PI * 2);
+            ctx.fillStyle = '#111827';
+            ctx.fill();
+            ctx.lineWidth = 1.6;
+            ctx.strokeStyle = item.color;
+            ctx.stroke();
+            ctx.font = `bold 9px ${THEME.FONT}`;
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText(String(item.badge), b[0], b[1] + 3.2);
           }
         }
       } else if (item.type === 'text') {
@@ -505,8 +634,30 @@
     return { blob: new Blob(chunks, { type }), mimeType: type, extension: type === 'video/mp4' ? 'mp4' : 'webm' };
   }
 
+  // En celulares abre el menú de compartir (WhatsApp...); en compu, o si eso falla, descarga el archivo.
+  async function deliverFile(blob, filename, mimeType, title) {
+    const file = new File([blob], filename, { type: mimeType });
+    const wantsShare = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+    if (wantsShare && navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title });
+        return 'shared';
+      } catch (err) {
+        if (err && err.name === 'AbortError') return 'cancelled';
+      }
+    }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    return 'downloaded';
+  }
+
   window.SimMedia = {
     THEME, VIDEO, svgEl, drawPitchSvg, renderItemsSvg, drawVideoFrame, recordVideo, videoSupported, loadCrest,
-    cellRect, cellName
+    cellRect, cellName, simplifyPath, pointAlong, deliverFile
   };
 })();
