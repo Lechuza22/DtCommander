@@ -27,9 +27,10 @@ flowchart TD
 
     PanelJugadora["#panel-jugadora"] --> DashSelect["#dashboardPlayerSelect"]
     PanelJugadora --> DashInfo["#dashboardInfoCard / #dashboardPlayerInfo (datos básicos, solo lectura)"]
-    PanelJugadora --> DashDiff["#dashboardDiff"]
-    PanelJugadora --> DashRadar["#dashboardRadarChart (canvas)"]
-    PanelJugadora --> DashAttrs["#dashboardAttrsGrid + #attrColorLegend"]
+    PanelJugadora --> DashLayout[".attrs-chart-layout (grid 2 columnas)"]
+    DashLayout --> DashAttrs["#dashboardAttrsGrid + #attrColorLegend"]
+    DashLayout --> DashRadar["#dashboardRadarChart (canvas)"]
+    PanelJugadora --> DashDiff["#dashboardDiff (debajo del layout, ancho completo)"]
     PanelJugadora --> DashTrend["#dashboardTrendChart (canvas, dentro de .chart-wrap)"]
     PanelJugadora --> DashTimeline["#dashboardTimeline"]
 
