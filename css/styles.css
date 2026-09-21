@@ -250,6 +250,24 @@ select {
 
 .player-info-item .hint { margin: 0; }
 
+/* Insignia del promedio, delante del nombre (el color sale de ATTR_VALUE_COLORS). */
+.player-rating {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  min-width: 64px;
+  height: 64px;
+  padding: 0 0.6rem;
+  border-radius: 12px;
+  line-height: 1;
+  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.12);
+}
+.player-rating-value { font-size: 28px; font-weight: 800; }
+.player-rating-label { margin-top: 4px; font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.85; }
+.rating-note { margin: 0.6rem 0 0; }
+
 .player-info-value {
   font-size: 16px;
   font-weight: 700;
