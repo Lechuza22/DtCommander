@@ -6,7 +6,8 @@ siga su progreso en el tiempo (pestaña Jugadora), arme/mueva la
 formación del equipo en un campo visual (con un historial de partidos,
 cada uno con hasta 3 planes/tableros independientes), dibuje jugadas en
 un tablero táctico libre (flechas, lápiz, texto; se guardan con nombre y
-se exportan como imagen), y planifique
+se exportan como imagen), simule esas jugadas animadas en fases (con
+video MP4), y planifique
 entrenamientos con una rúbrica de evaluación manual — todo sincronizado
 automáticamente contra una Google Sheet.
 
@@ -20,6 +21,8 @@ graph LR
     HTML --> SheetsJS["js/sheets-integration.js"]
     HTML --> AppJS["js/app.js"]
     HTML --> TacticaJS["js/tactica.js"]
+    HTML --> SimMediaJS["js/simulacion-media.js"]
+    HTML --> SimJS["js/simulacion.js"]
 
     AuthJS -->|"tapa/destapa #appRoot"| LocalStorage["localStorage"]
 
@@ -27,6 +30,8 @@ graph LR
     AppJS -->|"leer/escribir"| LocalStorage["localStorage"]
     AppJS -->|"hydrate() / scheduleSync()"| SheetsJS
     TacticaJS -->|"usa state y saveState()"| AppJS
+    SimJS -->|"usa state y saveState()"| AppJS
+    SimJS -->|"dibuja y graba video"| SimMediaJS
 
     SheetsJS -->|"fetch GET/POST"| WebApp["Google Apps Script (Web App)"]
     WebApp -->|"lee/escribe"| Sheet["Google Sheet del usuario"]
@@ -59,7 +64,8 @@ Google — no hay ningún servidor intermedio propio.
    partido del historial, un Plan A/B/C dentro de ese partido, y una
    forma táctica dentro de ese plan, y arrastra jugadoras), dibuja una
    jugada en el tablero de la pestaña Táctica (se guarda con nombre y se
-   puede exportar como imagen), o registra
+   puede exportar como imagen), arma una simulación animada por fases en
+   la pestaña Simulación (se descarga como video MP4), o registra
    una rúbrica de entrenamiento por posición (pestaña Entrenamiento —
    queda como historial de referencia, no modifica atributos). Cada
    cambio llama a `saveState()`.
@@ -83,6 +89,8 @@ Google — no hay ningún servidor intermedio propio.
 - [css/styles.md](css/styles.md) — estilos
 - [js/auth.md](js/auth.md) — pantalla de login (disuasoria, no real)
 - [js/app.md](js/app.md) — estado, Evaluador, Jugadora, Formación (drag & drop), Entrenamiento
+- [js/simulacion.md](js/simulacion.md) — pestaña Simulación: jugada animada en fases (pelota pegada, notas, tiempos, jugadas de ejemplo), historial y video MP4
+- [js/simulacion-media.md](js/simulacion-media.md) — dibujo de la cancha (SVG y canvas) y grabación de video
 - [js/tactica.md](js/tactica.md) — pestaña Táctica: tablero libre (jugadoras, rivales, flechas, lápiz, texto), historial de tácticas y exportar imagen
 - [js/sheets-integration.md](js/sheets-integration.md) — sync automática con Sheets
 - [data/google-apps-script.md](data/google-apps-script.md) — backend en Apps Script
