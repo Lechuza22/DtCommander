@@ -13,12 +13,13 @@ Antes tenía "acciones de transición" (avanzar dos casilleros, pase a Agos,
 tiro al arco...). Se sacaron porque no se les veía el uso: ahora la
 transición es solo lo que cambia de una fase a la siguiente. Las simulaciones
 guardadas con acciones se abren igual (las acciones se descartan al leerlas)
-y los estilos de pelota (por arriba, tiro) quedaron solo en
-[Secuencia](secuencia.md).
+y los estilos de pelota (por arriba, tiro) se fueron con ellas (los tenía
+también la solapa Secuencia, hoy archivada: ver
+[archivo/secuencia](../../archivo/secuencia/LEEME.md)).
 
 Está dentro de una función que se ejecuta sola (IIFE) y solo expone
-`window.setupSimulacion`, `window.renderSimulacion` y `window.SimTemplates`,
-que [js/app.js](app.md) y [js/secuencia.js](secuencia.md) usan. Depende de
+`window.setupSimulacion` y `window.renderSimulacion`, que
+[js/app.js](app.md) llama con un `typeof` de por medio. Depende de
 [js/simulacion-media.js](simulacion-media.md) (el dibujo y la grabación) y
 de `app.js` (`state`, `saveState`, `sanitizeSimItems`, `MAX_SIM_PHASES`...).
 
@@ -206,11 +207,10 @@ Igual que en Táctica: `saveSim` (con `asCopy`), `openSim`, `newSim`,
 "blando" (ver [[eliminación blanda (soft delete)]]) y un borrador en
 `localStorage` (`dtcomander_sim_draft`) mientras hay cambios sin guardar.
 
-La lista `state.simulations` también guarda las secuencias de la pestaña
-[Secuencia](secuencia.md) (otro modelo de la misma hoja): `visibleSims()` las
-oculta porque tienen un item `seq`. Y `window.SimTemplates` expone
-`TEMPLATES`, `OUR_BASE` y `RIV_BASE` para que Secuencia arme sus jugadas de
-ejemplo a partir de las mismas.
+La lista `state.simulations` también conserva las secuencias que se guardaron en
+la solapa Secuencia, hoy archivada (otro modelo de la misma hoja, ver
+[archivo/secuencia](../../archivo/secuencia/LEEME.md)): `visibleSims()` las oculta porque tienen
+un item `seq`, pero no las borra.
 
 ## Punto de partida: `boardFromTemplate` / `boardFromTactic`
 
@@ -219,8 +219,8 @@ ejemplo a partir de las mismas.
   una formación 2-3-2 propia (abajo, atacando hacia arriba) y una rival; cada
   paso solo dice lo que cambia respecto del anterior, con sus casilleros
   sombreados y textos. Los pasos que terminan en tiro o gol traen un `ballAct`
-  (`shot`, `goal`) que acá solo decide dónde queda la pelota (en la boca del
-  arco o adentro) y que Secuencia además usa para el tipo de movimiento. Las
+  (`shot`, `goal`) que decide dónde queda la pelota (en la boca del
+  arco o adentro). Las
   jugadas "ataque desde medio campo" y "pase de delantera" terminan en gol;
   "jugada de pared" termina en tiro afuera del arco.
 - **Desde una táctica** (`boardFromTactic`): toma las jugadoras, rivales y la
