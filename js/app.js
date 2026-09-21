@@ -411,18 +411,14 @@ function mergeTactics(localList, remoteList) {
 // Una simulación es una jugada animada en fases: { id, name, createdAt,
 // updatedAt, deleted, items[] }. Los items son una lista plana (así entra tal
 // cual en la hoja "Simulaciones", que tiene el mismo formato que "Tacticas"):
-//   { type: 'phase', ph, name, note, dur, seq }  una por fase; dur = segundos que
-//        dura la transición HACIA esa fase; seq = las acciones van una tras otra
+//   { type: 'phase', ph, name, note, dur }  una por fase; dur = segundos que
+//        dura la transición HACIA esa fase
 //   { type: 'player' | 'rival' | 'ball', ph, x, y, ... }  las piezas de cada fase
 //   { type: 'text', ph, x, y, text, color }               un cuadro de texto en esa fase
 //   { type: 'zone', ph, zc, zr, color }                   un casillero sombreado (col 0-2, fila 1-4 desde el arco propio)
-//   { type: 'action', ph, who, act, ... }                 una acción de la transición HACIA la fase ph
-const SIM_ITEM_TYPES = ['phase', 'player', 'rival', 'ball', 'text', 'zone', 'action', 'seq', 'step', 'move'];
+const SIM_ITEM_TYPES = ['phase', 'player', 'rival', 'ball', 'text', 'zone', 'seq', 'step', 'move'];
 const SIM_MOVE_KINDS = ['run', 'pass', 'cross', 'lob', 'shot', 'goal'];
 const MAX_SIM_STEPS = 40;
-const SIM_ACTIONS = ['move', 'goto', 'press', 'mark', 'pass', 'cross', 'lob', 'space', 'shot', 'goal'];
-const SIM_DIRS = ['up', 'down', 'left', 'right', 'upleft', 'upright', 'downleft', 'downright'];
-const SIM_SIDES = ['left', 'center', 'right'];
 const MAX_SIM_PHASES = 12;
 const SIM_DEFAULT_DUR = 2;
 
@@ -443,8 +439,7 @@ function sanitizeSimItems(items) {
         ...base,
         name: String(raw.name || '').slice(0, 40),
         note: String(raw.note || '').slice(0, 140),
-        dur: dur === null ? SIM_DEFAULT_DUR : Math.min(6, Math.max(0.5, dur)),
-        seq: raw.seq === true || raw.seq === 'true'
+        dur: dur === null ? SIM_DEFAULT_DUR : Math.min(6, Math.max(0.5, dur))
       });
       return;
     }
@@ -474,21 +469,6 @@ function sanitizeSimItems(items) {
       const zc = num(raw.zc), zr = num(raw.zr);
       if (zc === null || zr === null || zc < 0 || zc > 2 || zr < 1 || zr > 4) return;
       out.push({ ...base, zc: Math.floor(zc), zr: Math.floor(zr), color: hex(raw.color, '#facc15') });
-      return;
-    }
-    if (raw.type === 'action') {
-      if (!SIM_ACTIONS.includes(raw.act) || !key(raw.who)) return;
-      const n = num(raw.n);
-      out.push({
-        ...base,
-        who: key(raw.who),
-        act: raw.act,
-        dir: SIM_DIRS.includes(raw.dir) ? raw.dir : '',
-        n: n === null ? 1 : Math.min(3, Math.max(1, Math.floor(n))),
-        zone: /^[A-C][1-4]$/.test(raw.zone) ? raw.zone : '',
-        target: key(raw.target),
-        side: SIM_SIDES.includes(raw.side) ? raw.side : 'center'
-      });
       return;
     }
     const x = num(raw.x), y = num(raw.y);
