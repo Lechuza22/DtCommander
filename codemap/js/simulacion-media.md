@@ -19,7 +19,14 @@ sombreados, textos y la grilla) se dibujan de dos maneras:
   demasiado lenta para grabar en vivo, y en Safari peor.
 
 Las dos comparten las medidas (`THEME`) y la geometría de la punta de
-flecha (`arrowGeometry`), para que se vean iguales. Cada pieza puede traer
+flecha (`arrowGeometry`), para que se vean iguales. Las fichas miden
+`TOKEN_R` = 11,2 (letra `TOKEN_FONT` 9,6, nombre `NAME_FONT` 8,5); antes eran
+de 14 y resultaban grandes para la cancha, así que todo se achicó al 80%,
+incluido el desvío de la pelota pegada (`BALL_DX` 8,8, `BALL_DY` 8). Cada ficha
+lleva un círculo transparente de radio `TOKEN_HIT_R` = 14 que recibe los
+toques, para que agarrarla no cueste más. Por lo mismo, una pelota pegada a una
+jugadora tiene un área de toque de 8,5 (suelta, 13): con 13 taparía el centro
+de la ficha que la lleva y al agarrar a la jugadora se arrastraría la pelota. Cada pieza puede traer
 `_o` (opacidad de 0 a 1, para las que entran o salen en una transición) y, la
 pelota, `_h` (altura de 0 a 1 en un pase por arriba: se dibuja más grande y
 levantada, con su sombra en el piso). El orden de capas (`DRAW_ORDER`) es:
