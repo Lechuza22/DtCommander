@@ -83,7 +83,10 @@ sea fácil ubicar qué tocar.
   formulario de la rúbrica, con su propio layout en grilla en vez de
   reutilizar `.add-player-form` porque tiene bastantes más campos),
   `.training-log-notes` (observaciones de cada fila del historial).
-- **Jugadora (dashboard)**: `.player-info-row` / `.player-info-item` /
+- **Jugadora (dashboard)**: `.player-rating` (la insignia del promedio delante del
+  nombre: cuadrado redondeado de 64 px, el fondo y el color del texto los pone el JS
+  según la escala de atributos) con `.player-rating-value` / `.player-rating-label`,
+  `.rating-note` (la aclaración de qué atributos cuenta), `.player-info-row` / `.player-info-item` /
   `.player-info-value` (la tarjeta de datos básicos: etiqueta chica
   arriba, valor en negrita abajo), `.diff-grid` (reparte las filas de
   cambios en columnas de al menos 260px), `.diff-row` (grilla de 3
