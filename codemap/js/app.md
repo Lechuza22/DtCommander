@@ -3,9 +3,8 @@
 Es el cerebro de la aplicación: define la configuración editable (atributos,
 posiciones, formaciones, planes, sugerencias y rúbrica de entrenamiento),
 guarda todo el estado en memoria y en `localStorage`, y renderiza las
-cuatro pestañas propias (Táctica, Simulación y Secuencia viven en
-[js/tactica.js](tactica.md), [js/simulacion.js](simulacion.md) y
-[js/secuencia.js](secuencia.md)): Evaluador (sliders + radar chart, uno al lado del otro),
+cuatro pestañas propias (Táctica y Simulación viven en
+[js/tactica.js](tactica.md) y [js/simulacion.js](simulacion.md)): Evaluador (sliders + radar chart, uno al lado del otro),
 Jugadora (dashboard de solo lectura con el progreso en el tiempo),
 Formación (historial de Partidos → Plan A/B/C → forma táctica → campo SVG
 con arrastrar-y-soltar y sugerencias de alternativas) y Entrenamiento
@@ -35,7 +34,6 @@ flowchart TD
     DOMLoad --> setupDashboard
     DOMLoad --> setupTactica["setupTactica() (js/tactica.js)"]
     DOMLoad --> setupSimulacion["setupSimulacion() (js/simulacion.js)"]
-    DOMLoad --> setupSecuencia["setupSecuencia() (js/secuencia.js)"]
     DOMLoad --> renderAll
     DOMLoad --> Hydrate["window.SheetsSync.hydrate()"]
     Hydrate -->|hay datos remotos| normalizeRemoteState --> renderAll
@@ -48,7 +46,6 @@ flowchart TD
     renderAll --> renderDashboard
     renderAll --> renderTactica["renderTactica() (js/tactica.js)"]
     renderAll --> renderSimulacion["renderSimulacion() (js/simulacion.js)"]
-    renderAll --> renderSecuencia["renderSecuencia() (js/secuencia.js)"]
 
     setupEvaluador -->|slider input| updateRadarChart
     setupEvaluador -->|slider input| saveState
@@ -156,7 +153,7 @@ items[] }`) y mismos mecanismos: `sanitizeSimulations` limpia todo lo que
 llega de afuera y `mergeSimulations` (que usa `mergeById`) une lo local con
 la Sheet por `updatedAt`, con borrado "blando".
 
-Los `items` son una lista plana con nueve tipos (los últimos tres son de la pestaña Secuencia, abajo): `phase` (una por fase:
+Los `items` son una lista plana con nueve tipos (los últimos tres son de la solapa Secuencia archivada, abajo): `phase` (una por fase:
 `ph`, `name`, `note` y `dur` en segundos, entre 0,5 y 6); `player`,
 `rival` y `ball` (con su fase `ph` y, la pelota, `carrier`: quién la lleva);
 `text` (cuadro de texto en una fase); y `zone` (casillero sombreado: columna
@@ -168,12 +165,14 @@ descarta al leer), deja el número de fase entre 0 y `MAX_SIM_PHASES - 1`
 descarta lo inválido. La lista plana permite guardar todo en el mismo formato
 de hoja que las tácticas, sin cambiar el Apps Script.
 
-La pestaña Secuencia ([js/secuencia.js](secuencia.md)) guarda en esta misma
-lista con otro modelo: un item `seq` (la marca), `step` (`ph` = número de
-paso, `dur` de 0,3 a 8 s) y `move` (`piece`, `path` con hasta 300 puntos,
-`kind` entre `SIM_MOVE_KINDS`, `to`, `text`). El número de paso llega a
-`MAX_SIM_STEPS` (40). Un `move` sin camino válido se descarta y los puntos
-inválidos de un camino se quitan.
+La solapa Secuencia se archivó (ver [archivo/secuencia](../../archivo/secuencia/LEEME.md)), pero
+las secuencias que ya se habían guardado siguen en esta misma lista con su
+modelo: un item `seq` (la marca), `step` (`ph` = número de paso, `dur` de 0,3 a
+8 s) y `move` (`piece`, `path` con hasta 300 puntos, `kind` entre
+`SIM_MOVE_KINDS`, `to`, `text`). El número de paso llega a `MAX_SIM_STEPS`
+(40). Un `move` sin camino válido se descarta y los puntos inválidos de un
+camino se quitan. Se siguen aceptando y sincronizando para que no se pierdan
+de la Sheet, aunque ninguna solapa las muestre.
 
 ### `SCORE_SCALE` / `toScore(raw)` / `formatScore(score)` / `formatAttrValue(raw)`
 
