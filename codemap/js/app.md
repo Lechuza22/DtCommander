@@ -528,7 +528,10 @@ Arma el chip de una jugadora (nombre + borde izquierdo coloreado según
 Crea el grupo SVG que representa a una jugadora en la cancha (el círculo
 se pinta con `colorForPosition`), y le engancha `onTokenPointerDown`
 (arrastrar) y `pointerenter`/`pointerleave` (mostrar/ocultar
-sugerencias).
+sugerencias). El círculo visible tiene radio 12,8 (era 16: las fichas
+resultaban grandes para la cancha) y adentro va un círculo transparente de
+radio 16, que es el que recibe los toques: la zona para agarrar la ficha no se
+achicó aunque se vea más chica.
 
 ### `showSuggestions(name)` / `hideSuggestions()`
 
