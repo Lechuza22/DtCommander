@@ -3,8 +3,8 @@
 Es el cerebro de la aplicación: define la configuración editable (atributos,
 posiciones, formaciones, planes, sugerencias y rúbrica de entrenamiento),
 guarda todo el estado en memoria y en `localStorage`, y renderiza las
-cuatro pestañas propias (la quinta, Táctica, vive en
-[js/tactica.js](tactica.md)): Evaluador (sliders + radar chart, uno al lado del otro),
+cuatro pestañas propias (Táctica y Simulación viven en
+[js/tactica.js](tactica.md) y [js/simulacion.js](simulacion.md)): Evaluador (sliders + radar chart, uno al lado del otro),
 Jugadora (dashboard de solo lectura con el progreso en el tiempo),
 Formación (historial de Partidos → Plan A/B/C → forma táctica → campo SVG
 con arrastrar-y-soltar y sugerencias de alternativas) y Entrenamiento
@@ -33,16 +33,19 @@ flowchart TD
     DOMLoad --> setupFormacion
     DOMLoad --> setupDashboard
     DOMLoad --> setupTactica["setupTactica() (js/tactica.js)"]
+    DOMLoad --> setupSimulacion["setupSimulacion() (js/simulacion.js)"]
     DOMLoad --> renderAll
     DOMLoad --> Hydrate["window.SheetsSync.hydrate()"]
     Hydrate -->|hay datos remotos| normalizeRemoteState --> renderAll
     normalizeRemoteState --> mergeTactics
+    normalizeRemoteState --> mergeSimulations
 
     renderAll --> renderPlayerSelect
     renderAll --> renderEvaluador
     renderAll --> renderFormacion
     renderAll --> renderDashboard
     renderAll --> renderTactica["renderTactica() (js/tactica.js)"]
+    renderAll --> renderSimulacion["renderSimulacion() (js/simulacion.js)"]
 
     setupEvaluador -->|slider input| updateRadarChart
     setupEvaluador -->|slider input| saveState
@@ -128,8 +131,9 @@ tablero no cargara.
   números inválidos, recortan textos y validan el color (`#rgb`...), así un
   dato roto se ignora en vez de romper el tablero. `deleted` acepta
   `true`, `'true'` o `'si'` (así lo guarda la Sheet).
-- **`mergeTactics(local, remote)`**: une ambas listas táctica por
-  táctica y gana la de `updatedAt` más nuevo (ver
+- **`mergeById(local, remote, sanitizeList)`** (y su atajo
+  **`mergeTactics(local, remote)`**): une ambas listas elemento por
+  elemento y gana la de `updatedAt` más nuevo (ver
   [[eliminación blanda (soft delete)]]). Es la excepción a la regla del
   resto del estado ("si la Sheet tiene datos, pisa lo local"), porque acá
   pisar perdería trabajo: una táctica hecha sin conexión, o antes de
@@ -139,6 +143,22 @@ tablero no cargara.
 - `defaultState()` arranca con `tactics: []` y `loadLocal()` sanea las
   que haya en `localStorage`, así un estado guardado antes de existir la
   pestaña carga igual.
+
+### Simulaciones: `state.simulations` / `sanitizeSimItems` / `sanitizeSimulation(s)` / `mergeSimulations`
+
+La sexta clave de `state`: las simulaciones de la pestaña Simulación (una
+jugada animada en fases; la UI vive en [js/simulacion.js](simulacion.md)).
+Mismo esquema que las tácticas (`{ id, name, createdAt, updatedAt, deleted,
+items[] }`) y mismos mecanismos: `sanitizeSimulations` limpia todo lo que
+llega de afuera y `mergeSimulations` (que usa `mergeById`) une lo local con
+la Sheet por `updatedAt`, con borrado "blando".
+
+Los `items` son una lista plana con cuatro tipos: `phase` (una por fase:
+`ph`, `name`, `note`, `dur` en segundos, entre 0,5 y 6), y `player`,
+`rival` y `ball` (con su fase `ph` y, la pelota, `carrier`: quién la lleva).
+`sanitizeSimItems` deja el número de fase entre 0 y `MAX_SIM_PHASES - 1`
+(12 fases) y descarta lo inválido. La lista plana permite guardar las
+fases en el mismo formato de hoja que las tácticas.
 
 ### `SCORE_SCALE` / `toScore(raw)` / `formatScore(score)` / `formatAttrValue(raw)`
 
@@ -230,11 +250,11 @@ la pestaña Formación sin nada que mostrar.
 ### `setupTabs()`
 
 Cablea los botones `.tab-btn` (Evaluador / Jugadora / Formación /
-Táctica / Entrenamiento, la navegación de más arriba — no confundir con
+Táctica / Simulación / Entrenamiento, la navegación de más arriba — no confundir con
 las solapas de Plan A/B/C, que son internas a Formación). Al pasar a
-Táctica llama a `renderTactica()`, y al elegir cualquier solapa la deja
-visible con `scrollIntoView` (con 5 solapas la barra se desplaza a los
-costados en pantallas de menos de ~420px).
+Táctica o Simulación llama a `renderTactica()` / `renderSimulacion()`, y al elegir cualquier solapa la deja
+visible con `scrollIntoView` (con 6 solapas la barra se desplaza a los
+costados en pantallas de celular).
 
 ## Evaluador
 
