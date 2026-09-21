@@ -42,6 +42,17 @@ sea fácil ubicar qué tocar.
   compacto), `.field-bg` / `.field-line` / `.field-line-fill` (dibujo de
   la cancha en SVG), `.player-token` / `.token-circle` / `.token-label`
   (jugadora ubicada).
+- **Táctica**: `.tactic-tools-card` / `.tactic-toolbar` / `.tactic-group`
+  (barra de herramientas; en celular es compacta, fija arriba y cada fila se
+  desliza de costado), `.tool-btn` (con `.active`; la regla del activo
+  repite `:hover` porque en celular el hover queda "pegado" tras un toque y
+  dejaba letra blanca sobre fondo claro), `.swatch` (colores),
+  `.tactic-check`, `.tactic-text-input`, `.tactic-team-actions`, y
+  `#tacticField` (`overflow: visible` para que una jugadora arrastrada
+  afuera de la cancha siga al cursor, `touch-action: none` como
+  `#field`, y un cursor distinto por herramienta según la clase
+  `tool-*` que le pone el JS). Los colores de lo dibujado no están acá:
+  van como atributos del SVG (ver [js/tactica.js](../js/tactica.md)).
 - **Formularios inline** (alta de jugadora, de partido, y de evaluación):
   `.add-player-form`, reutilizado por `#addPlayerForm`, `#addMatchForm` y
   `#saveEvalForm` — incluye estilos tanto para `input[type=text]` como
@@ -70,8 +81,9 @@ sea fácil ubicar qué tocar.
 - **`@media (max-width: 640px)`**: ajustes responsive — la grilla de
   Formación pasa a una columna y la lista de disponibles se vuelve
   horizontal, pensado para usar la app desde el celular en la cancha.
-  También reduce el padding y la fuente de `.tab-btn` para que las 4
-  solapas entren sin scroll horizontal en 360px o más.
+  Con 5 solapas la barra `.tabs` se vuelve desplazable de costado
+  (`overflow-x: auto`, botones que no se achican) sin desbordar la
+  página.
 
 ## Dependencias externas
 
