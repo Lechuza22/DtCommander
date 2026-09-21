@@ -328,7 +328,79 @@ function defaultState() {
   // Solo en la demo inicial (plantel de ejemplo) dejamos el 2-3-2 ya armado.
   match.plans['Plan A'].formations['2-3-2'].placements = applyPresetToPlacements('2-3-2', DEFAULT_PLAYERS);
   const matches = { [matchId]: match };
-  return { players, matches, activeMatch: matchId, trainingLogs: [] };
+  return { players, matches, activeMatch: matchId, trainingLogs: [], tactics: [] };
+}
+
+// ---- Tácticas (tablero de la solapa Táctica; la UI vive en js/tactica.js) ----
+// Cada táctica es { id, name, createdAt, updatedAt, deleted, items[] }. Los
+// items son lo dibujado en la cancha: jugadoras, rivales, pelota, texto,
+// flechas y trazos a mano. Todo lo que viene de afuera (localStorage o la
+// Sheet) pasa por acá antes de usarse, así un dato roto no rompe el tablero.
+const TACTIC_ITEM_TYPES = ['player', 'rival', 'ball', 'text', 'arrow', 'path'];
+const TACTIC_DEFAULT_COLOR = '#facc15';
+
+function sanitizeTacticItems(items) {
+  if (!Array.isArray(items)) return [];
+  const num = v => (v !== '' && v !== null && Number.isFinite(Number(v))) ? Number(v) : null;
+  const out = [];
+  items.forEach((raw, idx) => {
+    if (!raw || !TACTIC_ITEM_TYPES.includes(raw.type)) return;
+    const base = { id: String(raw.id || 'i' + idx), type: raw.type };
+    const color = /^#[0-9a-fA-F]{3,8}$/.test(raw.color) ? raw.color : TACTIC_DEFAULT_COLOR;
+    if (raw.type === 'arrow') {
+      const x1 = num(raw.x1), y1 = num(raw.y1), x2 = num(raw.x2), y2 = num(raw.y2);
+      if ([x1, y1, x2, y2].some(v => v === null)) return;
+      out.push({ ...base, x1, y1, x2, y2, color, dash: raw.dash === true });
+    } else if (raw.type === 'path') {
+      if (!Array.isArray(raw.points)) return;
+      const points = raw.points.slice(0, 3000)
+        .map(p => (Array.isArray(p) ? [num(p[0]), num(p[1])] : [null, null]))
+        .filter(p => p[0] !== null && p[1] !== null);
+      if (points.length < 2) return;
+      out.push({ ...base, points, color });
+    } else {
+      const x = num(raw.x), y = num(raw.y);
+      if (x === null || y === null) return;
+      const item = { ...base, x, y };
+      if (raw.type === 'player') item.name = String(raw.name || '').slice(0, 40);
+      if (raw.type === 'rival') item.label = String(raw.label || '').slice(0, 3);
+      if (raw.type === 'text') { item.text = String(raw.text || '').slice(0, 80); item.color = color; }
+      out.push(item);
+    }
+  });
+  return out;
+}
+
+function sanitizeTactic(raw) {
+  if (!raw || !raw.id) return null;
+  const deleted = raw.deleted === true || raw.deleted === 'true' || raw.deleted === 'si';
+  return {
+    id: String(raw.id),
+    name: String(raw.name || '').slice(0, 60),
+    createdAt: String(raw.createdAt || ''),
+    updatedAt: String(raw.updatedAt || ''),
+    deleted,
+    items: deleted ? [] : sanitizeTacticItems(raw.items)
+  };
+}
+
+function sanitizeTactics(list) {
+  return (Array.isArray(list) ? list : []).map(sanitizeTactic).filter(Boolean);
+}
+
+// Une lo local con lo que trae la Sheet, táctica por táctica: gana la que se
+// tocó más tarde. A diferencia del resto de los datos (donde gana la Sheet),
+// acá no se puede pisar lo local: una táctica hecha sin conexión, o antes de
+// actualizar el Apps Script, se perdería. Eliminar es "blando" (deleted: true)
+// justamente para que una copia vieja no la haga reaparecer.
+function mergeTactics(localList, remoteList) {
+  const byId = new Map();
+  sanitizeTactics(remoteList).forEach(t => byId.set(t.id, t));
+  sanitizeTactics(localList).forEach(t => {
+    const remote = byId.get(t.id);
+    if (!remote || t.updatedAt > remote.updatedAt) byId.set(t.id, t);
+  });
+  return Array.from(byId.values());
 }
 
 function loadLocal() {
@@ -342,6 +414,7 @@ function loadLocal() {
     if (!parsed || typeof parsed !== 'object' || !parsed.players || !parsed.matches || !parsed.activeMatch) {
       return null;
     }
+    parsed.tactics = sanitizeTactics(parsed.tactics);
     return parsed;
   } catch (err) {
     return null;
@@ -401,6 +474,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupFormacion();
     setupDashboard();
     setupEntrenamiento();
+    if (typeof setupTactica === 'function') setupTactica();
     renderAll();
   } catch (err) {
     // Si el render local falla (p. ej. estado viejo en localStorage), no
@@ -458,7 +532,13 @@ function normalizeRemoteState(remote) {
     activeMatch = newId;
   }
 
-  return { players: remote.players || {}, matches, activeMatch, trainingLogs: remote.trainingLogs || [] };
+  return {
+    players: remote.players || {},
+    matches,
+    activeMatch,
+    trainingLogs: remote.trainingLogs || [],
+    tactics: mergeTactics(state.tactics, remote.tactics)
+  };
 }
 
 function renderAll() {
@@ -467,6 +547,7 @@ function renderAll() {
   renderFormacion();
   renderDashboard();
   renderEntrenamiento();
+  if (typeof renderTactica === 'function') renderTactica();
 }
 
 // ==================================================================
@@ -482,6 +563,9 @@ function setupTabs() {
       if (btn.dataset.tab === 'panel-formacion') renderFormacion();
       if (btn.dataset.tab === 'panel-jugadora') renderDashboard();
       if (btn.dataset.tab === 'panel-entrenamiento') renderEntrenamiento();
+      if (btn.dataset.tab === 'panel-tactica' && typeof renderTactica === 'function') renderTactica();
+      // Con 5 solapas la barra se desplaza en pantallas chicas: dejar visible la activa.
+      btn.scrollIntoView({ inline: 'center', block: 'nearest' });
     });
   });
 }
