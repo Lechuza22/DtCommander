@@ -350,19 +350,18 @@ compartir por WhatsApp); los que no, entregan WebM.
 simulación en un canvas y lo graba; el botón "Descargar video (MP4)" de la
 pestaña Simulación lo usa.
 
-### acción de una transición
+### gol y fin (regla del arco)
 
-En una simulación, una instrucción sobre una pieza (por ejemplo "Ine avanza 2
-casilleros" o "pase a Agos") que la app convierte en un destino concreto y
-lo escribe en la fase siguiente. A diferencia de un dato que se guarda tal
-cual, la acción se calcula a partir de dónde estaba la pieza en la fase
-anterior; por eso, si la pieza se mueve a mano después, la acción deja de
-valer y se quita.
+En las jugadas animadas, si la pelota queda adentro de un arco se considera
+gol y la jugada termina ahí: lo que hubiera después no se reproduce ni se
+graba en el video, y se muestran los carteles "¡GOL!" y "FIN". Una pelota que
+solo llega a la boca del arco, sin pasar la línea, es un tiro y no un gol.
 
-**En este proyecto:** `applyAction()` en [js/simulacion.js](js/simulacion.md)
-la calcula; se guarda como un item `action` de la simulación, con el
-casillero como unidad de movimiento (la cancha se divide en 3 columnas A-C
-por 4 filas 1-4 desde el arco propio).
+**En este proyecto:** `goalSide(x, y)` en
+[js/simulacion-media.js](js/simulacion-media.md) decide si un punto está
+adentro de un arco; `goalPhase()` en [js/simulacion.js](js/simulacion.md) y
+`goalStep()` en [js/secuencia.js](js/secuencia.md) buscan la fase o el paso
+del gol.
 
 ### movimiento grabado (frente a foto de una fase)
 
