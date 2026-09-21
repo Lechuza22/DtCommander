@@ -32,6 +32,7 @@
     <button class="tab-btn" data-tab="panel-jugadora">Jugadora</button>
     <button class="tab-btn" data-tab="panel-formacion">Formación</button>
     <button class="tab-btn" data-tab="panel-tactica">Táctica</button>
+    <button class="tab-btn" data-tab="panel-simulacion">Simulación</button>
     <button class="tab-btn" data-tab="panel-entrenamiento">Entrenamiento</button>
   </nav>
 
@@ -286,6 +287,115 @@
       </div>
     </section>
 
+    <!-- ===== SIMULACIÓN (una jugada animada en fases) ===== -->
+    <section id="panel-simulacion" class="tab-panel">
+      <div class="card">
+        <div class="roster-controls">
+          <select id="simSelect" title="Simulaciones guardadas"></select>
+          <button id="newSimBtn" class="btn">+ Simulación</button>
+          <button id="removeSimBtn" class="btn btn-danger">Eliminar</button>
+        </div>
+        <div id="simConfirm" class="add-player-form" hidden>
+          <span>Tenés cambios sin guardar en esta simulación.</span>
+          <button id="simConfirmSave" class="btn">Guardar y seguir</button>
+          <button id="simConfirmDiscard" class="btn btn-danger">Descartar</button>
+          <button id="simConfirmCancel" class="btn btn-secondary">Cancelar</button>
+        </div>
+        <div class="add-player-form">
+          <input type="text" id="simName" placeholder="Nombre de la simulación" maxlength="60">
+          <button id="saveSimBtn" class="btn">Guardar</button>
+          <button id="saveSimCopyBtn" class="btn btn-secondary">Guardar como copia</button>
+          <button id="exportVideoBtn" class="btn btn-secondary">Descargar video (MP4)</button>
+          <span id="simStatus" class="hint"></span>
+          <span id="simError" class="form-error"></span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Empezar desde</h2>
+        <div class="sim-start">
+          <div class="sim-start-row">
+            <select id="simTemplate"></select>
+            <button id="useTemplateBtn" class="btn btn-secondary">Usar jugada de ejemplo</button>
+          </div>
+          <div class="sim-start-row">
+            <select id="simFromTactic"></select>
+            <button id="useTacticBtn" class="btn btn-secondary">Tomar de una táctica</button>
+          </div>
+        </div>
+        <p class="hint">Una jugada de ejemplo trae las fases ya armadas para que las edites. Una táctica guardada aporta sus jugadoras, rivales y pelota como primera fase (queda una copia: la táctica original no cambia).</p>
+      </div>
+
+      <div class="field-layout">
+        <div class="card available-panel">
+          <h2>Jugadoras</h2>
+          <div id="simPlayers" class="available-list"></div>
+          <div class="tactic-team-actions">
+            <button type="button" id="addSimRivalBtn" class="btn btn-secondary">+ Rival</button>
+            <button type="button" id="addSimBallBtn" class="btn btn-secondary">+ Pelota</button>
+            <button type="button" id="simImportFormationBtn" class="btn btn-secondary">Traer de Formación</button>
+            <button type="button" id="simAssignBtn" class="btn" hidden>Asignar mi plantel a los puestos</button>
+          </div>
+          <div class="position-legend">
+            <span class="legend-item"><span class="legend-dot" style="background:#2563eb"></span>Nuestro equipo</span>
+            <span class="legend-item"><span class="legend-dot" style="background:#dc2626"></span>Rival</span>
+          </div>
+          <p class="hint">Arrastrá una jugadora de la lista a la cancha (o tocala para ponerla). Para sacarla de esta fase, arrastrala afuera. La pelota se pega a la jugadora cuando la soltás cerca de ella.</p>
+        </div>
+
+        <div class="card field-panel">
+          <svg id="simField" viewBox="0 0 300 400" preserveAspectRatio="xMidYMid meet"></svg>
+
+          <div class="sim-selbar" id="simSelBar" hidden>
+            <span id="simSelLabel" class="sim-sellabel"></span>
+            <select id="simRename"></select>
+            <button type="button" class="tool-btn" id="simGiveBall">Dar la pelota</button>
+            <button type="button" class="tool-btn" id="simReleaseBall">Soltar la pelota</button>
+            <button type="button" class="tool-btn" id="simRemoveSel">Quitar de esta fase</button>
+          </div>
+
+          <div class="sim-panel">
+            <div class="phase-tabs" id="simPhaseTabs"></div>
+            <div class="sim-row">
+              <button type="button" class="tool-btn" id="addPhaseBtn">+ Fase</button>
+              <button type="button" class="tool-btn" id="removePhaseBtn">Eliminar fase</button>
+              <button type="button" class="tool-btn" id="simUndo">Deshacer</button>
+              <button type="button" class="tool-btn" id="simRedo">Rehacer</button>
+              <button type="button" class="tool-btn" id="simClearPhase">Vaciar fase</button>
+            </div>
+            <input type="text" id="phaseName" class="tactic-text-input" placeholder="Nombre de la fase (ej: Saque de arco)" maxlength="40">
+            <textarea id="phaseNote" class="sim-note" rows="2" maxlength="140" placeholder="Nota de la fase: qué pasa acá (se muestra al reproducir y en el video)"></textarea>
+            <label class="sim-dur">
+              <span id="phaseDurLabel"></span>
+              <input type="range" id="phaseDur" min="0.5" max="6" step="0.5" value="2">
+            </label>
+
+            <div class="sim-row sim-play">
+              <button type="button" class="btn" id="simPlayBtn">Reproducir</button>
+              <input type="range" id="simScrubber" min="0" max="1000" value="0" aria-label="Avance de la simulación">
+              <span class="hint" id="simTime"></span>
+              <button type="button" class="tool-btn" id="simEditBtn" hidden>Volver a editar</button>
+            </div>
+            <div class="sim-row sim-options">
+              <label class="tactic-check">Velocidad
+                <select id="simSpeed">
+                  <option value="0.5">0,5x</option>
+                  <option value="1" selected>1x</option>
+                  <option value="2">2x</option>
+                </select>
+              </label>
+              <label class="tactic-check"><input type="checkbox" id="simLoop"> Repetir</label>
+              <label class="tactic-check"><input type="checkbox" id="simAuto" checked> Recorrido automático</label>
+            </div>
+            <div class="sim-caption" id="simCaption" hidden>
+              <strong id="simCaptionTitle"></strong>
+              <span id="simCaptionNote"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- ===== ENTRENAMIENTO ===== -->
     <section id="panel-entrenamiento" class="tab-panel">
       <div class="card">
@@ -336,5 +446,7 @@
   <script src="js/sheets-integration.js"></script>
   <script src="js/app.js"></script>
   <script src="js/tactica.js"></script>
+  <script src="js/simulacion-media.js"></script>
+  <script src="js/simulacion.js"></script>
 </body>
 </html>
