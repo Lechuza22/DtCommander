@@ -417,7 +417,9 @@ function mergeTactics(localList, remoteList) {
 //   { type: 'text', ph, x, y, text, color }               un cuadro de texto en esa fase
 //   { type: 'zone', ph, zc, zr, color }                   un casillero sombreado (col 0-2, fila 1-4 desde el arco propio)
 //   { type: 'action', ph, who, act, ... }                 una acción de la transición HACIA la fase ph
-const SIM_ITEM_TYPES = ['phase', 'player', 'rival', 'ball', 'text', 'zone', 'action'];
+const SIM_ITEM_TYPES = ['phase', 'player', 'rival', 'ball', 'text', 'zone', 'action', 'seq', 'step', 'move'];
+const SIM_MOVE_KINDS = ['run', 'pass', 'cross', 'lob', 'shot', 'goal'];
+const MAX_SIM_STEPS = 40;
 const SIM_ACTIONS = ['move', 'goto', 'press', 'mark', 'pass', 'cross', 'lob', 'space', 'shot', 'goal'];
 const SIM_DIRS = ['up', 'down', 'left', 'right', 'upleft', 'upright', 'downleft', 'downright'];
 const SIM_SIDES = ['left', 'center', 'right'];
@@ -433,7 +435,7 @@ function sanitizeSimItems(items) {
   items.forEach((raw, idx) => {
     if (!raw || !SIM_ITEM_TYPES.includes(raw.type)) return;
     const phRaw = num(raw.ph);
-    const ph = Math.min(MAX_SIM_PHASES - 1, Math.max(0, phRaw === null ? 0 : Math.floor(phRaw)));
+    const ph = Math.min(MAX_SIM_STEPS - 1, Math.max(0, phRaw === null ? 0 : Math.floor(phRaw)));
     const base = { id: String(raw.id || 'i' + idx), type: raw.type, ph };
     if (raw.type === 'phase') {
       const dur = num(raw.dur);
@@ -443,6 +445,28 @@ function sanitizeSimItems(items) {
         note: String(raw.note || '').slice(0, 140),
         dur: dur === null ? SIM_DEFAULT_DUR : Math.min(6, Math.max(0.5, dur)),
         seq: raw.seq === true || raw.seq === 'true'
+      });
+      return;
+    }
+    if (raw.type === 'seq') { out.push(base); return; }
+    if (raw.type === 'step') {
+      const dur = num(raw.dur);
+      out.push({ ...base, dur: dur === null ? 1.5 : Math.min(8, Math.max(0.3, dur)) });
+      return;
+    }
+    if (raw.type === 'move') {
+      if (!key(raw.piece) || !Array.isArray(raw.path)) return;
+      const path = raw.path.slice(0, 300)
+        .map(p => (Array.isArray(p) ? [num(p[0]), num(p[1])] : [null, null]))
+        .filter(p => p[0] !== null && p[1] !== null);
+      if (!path.length) return;
+      out.push({
+        ...base,
+        piece: key(raw.piece),
+        path,
+        kind: SIM_MOVE_KINDS.includes(raw.kind) ? raw.kind : 'run',
+        to: key(raw.to),
+        text: String(raw.text || '').slice(0, 160)
       });
       return;
     }
@@ -574,6 +598,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupEntrenamiento();
     if (typeof setupTactica === 'function') setupTactica();
     if (typeof setupSimulacion === 'function') setupSimulacion();
+    if (typeof setupSecuencia === 'function') setupSecuencia();
     renderAll();
   } catch (err) {
     // Si el render local falla (p. ej. estado viejo en localStorage), no
@@ -649,6 +674,7 @@ function renderAll() {
   renderEntrenamiento();
   if (typeof renderTactica === 'function') renderTactica();
   if (typeof renderSimulacion === 'function') renderSimulacion();
+  if (typeof renderSecuencia === 'function') renderSecuencia();
 }
 
 // ==================================================================
@@ -666,6 +692,7 @@ function setupTabs() {
       if (btn.dataset.tab === 'panel-entrenamiento') renderEntrenamiento();
       if (btn.dataset.tab === 'panel-tactica' && typeof renderTactica === 'function') renderTactica();
       if (btn.dataset.tab === 'panel-simulacion' && typeof renderSimulacion === 'function') renderSimulacion();
+      if (btn.dataset.tab === 'panel-secuencia' && typeof renderSecuencia === 'function') renderSecuencia();
       // Con 5 solapas la barra se desplaza en pantallas chicas: dejar visible la activa.
       btn.scrollIntoView({ inline: 'center', block: 'nearest' });
     });
