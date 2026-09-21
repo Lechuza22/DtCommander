@@ -588,11 +588,11 @@ input[type="range"] { width: 100%; }
 .token-circle {
   fill: var(--primary);
   stroke: #fff;
-  stroke-width: 2;
+  stroke-width: 1.6;
 }
 .token-label {
   fill: #fff;
-  font-size: 11px;
+  font-size: 9px;
   font-weight: 600;
   pointer-events: none;
 }
