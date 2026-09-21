@@ -321,3 +321,31 @@ tolerancia, y descarta el resto.
 **En este proyecto:** `simplifyPath()` en [js/tactica.js](js/tactica.md)
 lo aplica al soltar el dedo (tolerancia de 0,6 unidades de cancha) para que
 los dibujos entren cómodos en la Sheet.
+
+### fase (phase) e interpolación
+
+En una simulación cada fase es una "foto" de la jugada: dónde está cada
+jugadora, cada rival y la pelota en ese momento. Para animar de una fase a
+la siguiente no se guarda el movimiento: se calcula. La interpolación
+consiste en ubicar cada pieza en un punto intermedio entre su posición
+inicial y la final según cuánto avanzó la transición (de 0 a 1), y una
+curva de "suavizado" hace que arranque y frene despacio en vez de moverse a
+velocidad constante.
+
+**En este proyecto:** `transitionFrame()` en
+[js/simulacion.js](js/simulacion.md) interpola las posiciones con
+`ease()`; las flechas de recorrido (`autoTrails()`) también se calculan a
+partir de las dos fases y no se guardan.
+
+### MediaRecorder (grabar video en el navegador)
+
+Una función del navegador que graba a un archivo de video lo que se dibuja
+en un `<canvas>` (vía `captureStream`), sin programas externos. Graba en
+tiempo real: un video de 10 segundos tarda 10 segundos. El formato depende
+del navegador: Chrome y Safari de hoy pueden entregar MP4 (el más fácil de
+compartir por WhatsApp); los que no, entregan WebM.
+
+**En este proyecto:** `recordVideo()` en
+[js/simulacion-media.js](js/simulacion-media.md) pinta cada cuadro de la
+simulación en un canvas y lo graba; el botón "Descargar video (MP4)" de la
+pestaña Simulación lo usa.
