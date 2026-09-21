@@ -164,6 +164,9 @@
     }
   ];
 
+  // La solapa Secuencia arma sus jugadas de ejemplo a partir de estas mismas.
+  window.SimTemplates = { TEMPLATES, OUR_BASE, RIV_BASE };
+
   // ------------------------------------------------------------------
   // Estado
   // ------------------------------------------------------------------
@@ -226,8 +229,9 @@
 
   function visibleSims() {
     ensureSims();
+    // Las secuencias (solapa Secuencia) viven en la misma lista pero tienen su propio modelo.
     return state.simulations
-      .filter(s => !s.deleted)
+      .filter(s => !s.deleted && !s.items.some(i => i.type === 'seq'))
       .sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
   }
 
