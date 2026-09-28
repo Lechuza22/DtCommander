@@ -9,10 +9,10 @@ JavaScript busca por `document.getElementById` / `querySelectorAll`.
 
 ```mermaid
 flowchart TD
-    LoginGate["#loginGate / #appRoot"] --> AuthJS["js/auth.js"]
+    LoginGate["#loginGate (#loginRol / #loginNombre / #loginClave / #loginBtn) / #appRoot"] --> AccesoJS["js/acceso.js"]
 
-    Header["header (#syncStatus, #logoutBtn)"] --> SheetsIntegration["js/sheets-integration.js: setStatus()"]
-    Header --> AuthJS
+    Header["header (#rolChip, #syncStatus, #logoutBtn) + #candadoAviso"] --> SheetsIntegration["js/sheets-integration.js: setStatus()"]
+    Header --> AccesoJS
 
     TabsNav["#groupTabs (Equipo / Planificar / Partido) + #subTabs (las solapas del grupo elegido)"] --> AppTabs["js/app.js: setupTabs() / showTab()"]
 
@@ -76,9 +76,13 @@ flowchart TD
 - **`#loginGate`** / **`#appRoot`**: son dos contenedores hermanos, no
   anidados. `#appRoot` arranca con `hidden` puesto directamente en el
   HTML (no por JS) para que no haya un instante de "flash" de la app
-  antes de que [js/auth.js](js/auth.md) decida si mostrarla. Todo lo
+  antes de que [js/acceso.js](js/acceso.md) decida si mostrarla. Todo lo
   que describe el resto de este documento (header, tabs, las ocho
   solapas) vive **dentro** de `#appRoot`.
+- **La pantalla de entrada** (`#loginGate`) tiene `#loginRol` (DT / soporte; jugadora se agrega cuando esté su
+  vista), `#loginNombre` (solo para soporte y jugadoras), `#loginClave`, `#loginBtn` y `#loginError`.
+  **`#rolChip`** (en el header) dice quién entró, y **`#candadoAviso`** es el cartel amarillo que ve el DT mientras el
+  Apps Script no tenga el candado activado. El botón **`#logoutBtn`** pide dos toques.
 - **`#groupTabs`** y **`#subTabs`** son la navegación en dos niveles. Arriba (`.tab-btn`,
   con `data-group`) están los tres grupos: Equipo (Evaluador, Jugadora, Entrenamiento),
   Planificar (Formación, Táctica, Simulación) y Partido (En vivo, Jugados). Abajo
@@ -130,10 +134,10 @@ flowchart TD
   ella, los formularios de arriba quedaban siempre visibles aunque el
   atributo `hidden` estuviera bien puesto (bug real que hubo en la app).
 - Carga nueve `<script>` al final del `<body>`, en este orden:
-  `auth.js`, Chart.js (CDN), `sheets-integration.js`, `app.js`, `tactica.js`,
+  `acceso.js`, Chart.js (CDN), `sheets-integration.js`, `app.js`, `tactica.js`,
   `simulacion-media.js`, `simulacion.js`, `partido.js`, `jugados.js`
   (`jugados.js` va después de `partido.js` porque usa `window.PartidoUtil`).
-  `auth.js` va primero porque decide si el resto siquiera se ve; el
+  `acceso.js` va primero porque decide si el resto siquiera se ve y de quién son los datos; el
   resto del orden importa porque `app.js` usa `window.SheetsSync` y
   `Chart` al arrancar. `tactica.js` va después de `app.js` porque usa sus
   funciones y su estado, y `app.js` lo invoca con un `typeof` de por medio. Lo mismo con
@@ -176,7 +180,7 @@ flowchart TD
 | Dependencia | Uso |
 |---|---|
 | [css/styles.css](css/styles.md) | Todo el estilo visual |
-| [js/auth.md](js/auth.md) | Pantalla de login (disuasoria, no real) |
+| [js/acceso.md](js/acceso.md) | Quién entró (DT, soporte o jugadora) y qué puede hacer; la validación real la hace el Apps Script |
 | [Chart.js](https://www.chartjs.org/) (CDN `jsdelivr`) | Radar chart de atributos |
 | [js/sheets-integration.js](js/sheets-integration.md) | Sync con Google Sheets |
 | [js/app.js](js/app.md) | Estado, Evaluador, Jugadora, Formación y Entrenamiento |
