@@ -698,6 +698,42 @@ input[type="range"] { width: 100%; }
   font-size: 13px;
 }
 
+/* Panel de la jugadora elegida en Partido (perfil + cambios sugeridos). En escritorio va dentro del banco; en
+   celular es una hoja fija abajo (así no empuja la cancha mientras se toca). */
+.player-token.selected .token-circle { stroke: #facc15; stroke-width: 3; }
+.live-suggestions .sugg-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.4rem; }
+.live-suggestions .sugg-head h3 { margin: 0; }
+.live-suggestions .hint { margin: 0.5rem 0 0; }
+.live-sugg-list { display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 0.2rem; }
+.live-sugg-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.45rem;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-left-width: 5px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+.live-sugg-info { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0; gap: 1px; }
+.live-sugg-name { font-weight: 700; }
+.live-sugg-pos { color: #667; font-size: 12px; }
+.sugg-rating { display: inline-flex; justify-content: center; min-width: 2rem; padding: 0.1rem 0.35rem; border-radius: 6px; font-size: 12px; font-weight: 800; }
+@media (max-width: 640px) {
+  .suggestions.live-suggestions {
+    top: auto;
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    width: auto;
+    max-height: 62vh;
+    overflow-y: auto;
+    pointer-events: auto;
+  }
+  .live-suggestions .suggestions-radar { height: 150px; max-width: 170px; margin-bottom: 0.6rem; }
+}
+
 .live-setup > summary { cursor: pointer; font-weight: 700; color: var(--primary-dark); font-size: 15px; }
 .live-setup[open] > summary { margin-bottom: 0.9rem; }
 .live-bring { margin-top: 0.9rem; }
