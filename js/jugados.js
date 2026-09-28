@@ -1,7 +1,7 @@
 // ==================================================================
 // DTCommander — solapa Jugados
 //
-// Los partidos ya anotados en la solapa En vivo: una lista con el resultado de cada uno y,
+// Los partidos ya terminados en la solapa En vivo: una lista con el resultado de cada uno y,
 // al elegir uno, su resumen (a favor / en contra), quién metió y asistió, la línea de tiempo
 // con las jugadas y los cambios de cada minuto, y la alineación inicial. Solo muestra lo que
 // está guardado en state.matchLogs; para editar un partido se abre en En vivo.
@@ -10,7 +10,7 @@
   const $ = id => document.getElementById(id);
   let selectedId = null;
 
-  const RESULT_TEXT = { win: 'Ganamos', draw: 'Empatamos', loss: 'Perdimos', live: 'Sin terminar' };
+  const RESULT_TEXT = { win: 'Ganamos', draw: 'Empatamos', loss: 'Perdimos' };
 
   // Filas del resumen: qué se cuenta "a favor" y qué "en contra". Goles y jugadas de gol/peligrosas ya traen su lado
   // en el tipo (gol nuestro / gol rival, jugada de gol / jugada peligrosa); el resto lleva side.
@@ -27,7 +27,7 @@
   const count = (events, kind, side) => events.filter(e => e.kind === kind && (!side || e.side === side)).length;
   const score = events => ({ us: count(events, 'goal'), them: count(events, 'goalRival') });
 
-  // Un partido cuenta como jugado si se empezó o si se anotó algo.
+  // Un partido cuenta como jugado recién cuando se terminó (fase "Final"); mientras se juega se sigue en En vivo.
   function playedMatches() {
     return (state.matchLogs || [])
       .filter(r => !r.deleted && state.matches[r.id])
@@ -39,12 +39,11 @@
         events: r.items.filter(i => i.type === 'event'),
         subs: r.items.filter(i => i.type === 'sub')
       }))
-      .filter(x => x.meta && (x.meta.phase !== 'idle' || x.events.length || x.subs.some(s => s.status === 'done')))
+      .filter(x => x.meta && x.meta.phase === 'end')
       .sort((a, b) => (b.match.date || '').localeCompare(a.match.date || '') || String(b.rec.updatedAt).localeCompare(String(a.rec.updatedAt)));
   }
 
   function resultOf(x) {
-    if (x.meta.phase !== 'end') return 'live';
     const s = score(x.events);
     return s.us > s.them ? 'win' : s.us < s.them ? 'loss' : 'draw';
   }
@@ -126,7 +125,7 @@
     if (!list) return;
     const played = playedMatches();
     if (!played.length) {
-      list.innerHTML = '<p class="hint">Todavía no hay partidos jugados. Cuando empieces un partido en la solapa En vivo, va a aparecer acá.</p>';
+      list.innerHTML = '<p class="hint">Todavía no hay partidos terminados. Cuando termines un partido en la solapa En vivo, va a aparecer acá.</p>';
       $('playedDetail').hidden = true;
       return;
     }
