@@ -361,3 +361,36 @@ solo llega a la boca del arco, sin pasar la línea, es un tiro y no un gol.
 [js/simulacion-media.js](js/simulacion-media.md) decide si un punto está
 adentro de un arco; `goalPhase()` en [js/simulacion.js](js/simulacion.md)
 busca la fase del gol.
+
+### reloj por marcas de tiempo
+
+Una forma de hacer un cronómetro que no se descuadra. En vez de un número
+que va sumando cada segundo (y que se frena si el navegador duerme la página
+o se bloquea el celular), se guarda la **hora en que empezó** y, cada vez que
+hace falta mostrarlo, se calcula cuánto pasó restando contra la hora actual.
+
+**En este proyecto:** `position()` en [js/partido.js](js/partido.md) calcula
+el tiempo de juego a partir de `t1Start`, `t1End`, `t2Start` y `t2End`. Por eso
+el reloj del partido sigue bien aunque se cambie de solapa o se recargue la
+página; el `setInterval` que hay solo vuelve a dibujar el número.
+
+### pantalla encendida (Wake Lock)
+
+Un permiso del navegador para pedir que la pantalla no se apague mientras la
+página lo necesita, como en una app de cocina o un cronómetro. Si el navegador
+no lo soporta o lo rechaza, la página sigue funcionando igual.
+
+**En este proyecto:** `syncWakeLock()` en [js/partido.js](js/partido.md) lo pide
+mientras corre el reloj del partido y lo suelta en el entretiempo y al final.
+
+### registro del partido (partido en vivo)
+
+Lo que se anota mientras se juega un partido: el reloj, las jugadas (goles,
+jugadas de gol, jugadas peligrosas) y los cambios de jugadoras, cada uno con su
+minuto. Es distinto del [[partido (match)]] de Formación, que solo guarda el
+rival, la fecha y las alineaciones por plan: el registro dice **qué pasó**.
+
+**En este proyecto:** `state.matchLogs` guarda un registro por partido (el mismo
+`id`), con el formato de las tácticas y simulaciones, y viaja por la hoja
+`PartidosVivo` del Apps Script. Se une con la Sheet por fecha de modificación
+para que un partido anotado sin señal no se pierda.
