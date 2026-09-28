@@ -79,6 +79,11 @@ flowchart TD
   pantalla de entrada antes de que [js/acceso.js](js/acceso.md) decida si mostrarla. Todo lo
   que describe el resto de este documento (header, tabs, las ocho
   solapas) vive **dentro** de `#appRoot`.
+- **`<head>`**: además del título y la hoja de estilos declara el ícono de la app, una pelota ⚽: `favicon.ico` y los PNG de
+  16 y 32 px (pestaña del navegador), `apple-touch-icon` (pantalla de inicio del iPhone), `theme-color` (la barra del
+  celular, del azul de la app) y `manifest.webmanifest`, que permite instalar la app en la pantalla de inicio (íconos de
+  192 y 512 px y uno "maskable" con margen para que Android lo recorte sin comerse la pelota). Las imágenes están en
+  `images/icono/`.
 - **La pantalla de entrada** (`#loginGate`) tiene `#loginRol` (DT / soporte; jugadora se agrega cuando esté su
   vista), `#loginNombre` (solo para soporte y jugadoras), `#loginClave`, `#loginBtn` y `#loginError`.
   **`#rolChip`** (en el header, junto al título y al punto de estado) dice quién entró. **`.header-acciones`** agrupa, en la esquina superior derecha, **`#ajustesBtn`** (el engranaje, un dibujo SVG; solo para el DT) y **`#logoutBtn`** (⏻); el engranaje abre el diálogo **`#ajustes`** de [js/ajustes.js](js/ajustes.md) (`#ajustesCerrar`, las pestañas `.ajustes-tab`, `#accesosJugadoras`, `#accesosSoporte`, `#accesoSoporteForm`, `#permisosTabla`), y **`#candadoAviso`** es el cartel amarillo que ve el DT mientras el
