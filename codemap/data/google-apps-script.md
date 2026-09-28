@@ -22,6 +22,7 @@ flowchart TD
     doGet --> readTrainingLogs_
     doGet --> readTactics_
     doGet --> readSimulations_
+    doGet --> readMatchLogs_
     POST["Request POST (Web App)"] --> doPost
     doPost --> writePlayers_
     doPost --> writeHistory_
@@ -29,6 +30,7 @@ flowchart TD
     doPost --> writeTrainingLogs_
     doPost -->|solo si body.tactics es un array| writeTactics_
     doPost -->|solo si body.simulations es un array| writeSimulations_
+    doPost -->|solo si body.matchLogs es un array| writeMatchLogs_
     doPost --> writeMeta_["writeMeta_('activeMatch', ...)"]
     doPost --> jsonResponse_
 
@@ -45,9 +47,11 @@ flowchart TD
 
     readTactics_ --> readDrawings_
     readSimulations_ --> readDrawings_
+    readMatchLogs_ --> readDrawings_
     writeTactics_ --> writeDrawings_
     writeSimulations_ --> writeDrawings_
-    readDrawings_ -->|une las celdas de datos y parsea el JSON| SheetDibujos["Sheets Tacticas / Simulaciones"]
+    writeMatchLogs_ --> writeDrawings_
+    readDrawings_ -->|une las celdas de datos y parsea el JSON| SheetDibujos["Sheets Tacticas / Simulaciones / PartidosVivo"]
     writeDrawings_ -->|reescribe completa, repartiendo el JSON en celdas| SheetDibujos
 
     readPlayers_ --> getOrCreateSheet_
@@ -93,7 +97,7 @@ flowchart TD
   `Datos`; si supera los 40.000 caracteres se sigue en `Datos2`, `Datos3`...
   porque una celda de Sheets aguanta 50.000. `Eliminada` vale `si` para las
   tácticas borradas (borrado "blando": la fila queda, sin dibujo). Es una
-  de las dos hojas (con Simulaciones) que **no** se lee ni se escribe siempre
+  de las tres hojas (con Simulaciones y PartidosVivo) que **no** se lee ni se escribe siempre
   entera desde la app: ver más abajo.
 - **Simulaciones** — guarda las simulaciones de la pestaña Simulación (fases) y las secuencias que se guardaron en la solapa Secuencia, hoy archivada (movimientos grabados); se distinguen por un item `seq` y la app no las muestra. Mismo formato que Tacticas (`Id, Nombre, Creada,
   Actualizada, Eliminada, Datos, ...`), para las simulaciones de la pestaña
@@ -103,6 +107,16 @@ flowchart TD
   (los items `action` de una versión anterior se ignoran al abrir). Como el Apps Script solo guarda y devuelve
   esa lista sin mirar su contenido, sumar tipos de item nuevos no obliga a
   volver a pegar el script.
+- **PartidosVivo** — mismo formato que Tacticas (`Id, Nombre, Creada,
+  Actualizada, Eliminada, Datos, ...`): una fila por partido con lo que se anota
+  en la barra "En vivo" de Formación ([js/partido.js](../js/partido.md)). `Id` es
+  el del partido (`MatchId` de la hoja Partidos) y `Nombre` el rival. Su `Datos` es
+  la lista plana de items `meta` (duración, fase y horas de inicio y fin de cada
+  tiempo), `event` (goles y jugadas con su minuto) y `sub` (cambios por hacer o
+  hechos). Como las otras dos, no se lee ni se escribe siempre entera desde la
+  app: el cliente la une con la Sheet por `Actualizada`, así un partido anotado
+  sin señal no se pisa. **Es la única hoja de esta ronda que exige volver a
+  pegar el script**: hasta entonces la Sheet ignora `matchLogs`.
 - **Meta** — `Clave, Valor`. Hoy solo guarda `activeMatch` (qué partido
   quedó abierto la última vez).
 
@@ -120,7 +134,7 @@ redeployar, solo las 5 keys en sí (`tecnica`, `tactica`, `presion`,
 ## `doGet(e)` / `doPost(e)`
 
 `doGet` arma `{ players, matches, trainingLogs, tactics, simulations,
-activeMatch }` combinando las ocho hojas — `attachHistory_` le agrega el array
+matchLogs, activeMatch }` combinando las nueve hojas — `attachHistory_` le agrega el array
 `.history` a cada jugadora de `players` antes de responder. `doPost`
 recibe ese mismo shape completo (mandado como `text/plain` desde el
 cliente para evitar el preflight de CORS — ver [[CORS / preflight]] en
