@@ -82,7 +82,8 @@ header h1 {
   gap: 0.75rem;
 }
 
-.login-card input {
+.login-card input,
+.login-card select {
   padding: 0.6rem 0.75rem;
   border-radius: 6px;
   border: 1px solid var(--border);
@@ -99,6 +100,28 @@ header h1 {
 .sync-status.sync-syncing { color: #ffe08a; }
 .sync-status.sync-offline { color: #ff9b9b; }
 .sync-status.sync-local { color: #cfd8e3; }
+.sync-status.sync-denied { color: #ff5c5c; font-weight: 800; }
+
+.rol-chip {
+  font-size: 12px;
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  padding: 2px 10px;
+  white-space: nowrap;
+  max-width: 40vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.btn-logout.armado { width: auto; padding: 0 8px; background: var(--danger); border-color: var(--danger); }
+
+.candado-aviso {
+  background: #fff4d6;
+  color: #6b4a00;
+  border-bottom: 2px solid #e0a800;
+  padding: 0.6rem 1rem;
+  font-size: 13px;
+  line-height: 1.4;
+}
 
 .tabs {
   display: flex;
@@ -1080,7 +1103,7 @@ input[type="range"] { width: 100%; }
     pointer-events: none;
   }
   .field-layout { grid-template-columns: 1fr; }
-  .attrs-chart-layout { grid-template-columns: 1fr; }
+  .attrs-chart-layout { grid-template-columns: minmax(0, 1fr); }
   .available-list { flex-direction: row; flex-wrap: wrap; }
   .slider-group { grid-template-columns: 110px 1fr 28px; }
   /* Con 5 solapas no entran todas en 360px: la barra se desplaza a los costados. */
