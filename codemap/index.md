@@ -184,6 +184,6 @@ flowchart TD
 | [js/simulacion.js](js/simulacion.md) | Pestaña Simulación (jugada animada en fases) |
 | [js/simulacion-media.js](js/simulacion-media.md) | Dibujo (SVG y canvas) y grabación de video |
 | [js/partido.js](js/partido.md) | Solapa En vivo: reloj, marcador, jugadas, cancha propia y cambios |
-| [js/jugados.js](js/jugados.md) | Solapa Jugados: los partidos ya anotados, con su resumen y línea de tiempo |
+| [js/jugados.js](js/jugados.md) | Solapa Jugados: los partidos ya terminados, con su resumen y línea de tiempo |
 
 Ver también [GLOSSARY.md](GLOSSARY.md).
