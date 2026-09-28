@@ -34,10 +34,18 @@ flowchart TD
     Hydrate -->|"el script no está protegido"| marcarServidor["marcarServidor(false): cartel #candadoAviso (solo al DT)"]
 ```
 
+## Permisos por rol: `PERMISOS`
+
+Una sola tabla con lo que puede hacer cada rol en cada solapa: `editar` (ve y edita), `ver` (solo mira) o `nada`. La usa
+la pestaña Permisos de [Ajustes](ajustes.md) y la usará la vista de solo lectura de las jugadoras. Lo que de verdad se
+entrega o se acepta lo decide el Apps Script; esta tabla lo dice en pantalla.
+
 ## `window.Acceso`
 
 - **`rol`**, **`nombre`**: los de la sesión (o `null`/`''` si no hay).
 - **`credenciales()`**: `{ rol, nombre, clave }` para mandar en cada pedido al script.
+- **`PERMISOS`** y **`nivel(panel)`**: la tabla de arriba y el nivel del rol actual en una solapa (`'ajustes'` incluida). El
+  engranaje ⚙ del encabezado solo se muestra si `nivel('ajustes')` es `editar` (o sea, para el DT).
 - **`puedeEditar()`**: `true` para `dt` y `soporte`. La sincronización lo usa para **no mandar nunca una escritura**
   desde una jugadora (segunda barrera; la primera es que el script las rechaza).
 - **`storageKey()`**: dónde guarda `app.js` los datos en el dispositivo. El DT y el soporte usan `dtcomander_data`;
