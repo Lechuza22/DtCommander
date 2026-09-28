@@ -14,6 +14,8 @@
   const CACHE_EQUIPO = 'dtcomander_data';
   const CACHE_JUGADORA = 'dtcomander_data_jugadora';
   const AVISO_KEY = 'dtcomander_aviso';
+  const DIAG_KEY = 'dtcomander_diag';
+  const DIAG_MAX = 30;
   // 'jugadora' se agrega acá cuando esté lista su vista de solo lectura.
   const ROLES_HABILITADOS = ['dt', 'soporte'];
   const ROLES_QUE_EDITAN = ['dt', 'soporte'];
@@ -77,10 +79,40 @@
       if (aviso) aviso.hidden = !!protegido || !sesion || sesion.rol !== 'dt';
     },
 
-    // El script dijo que la clave ya no vale (la cambiaron): se cierra la sesión y se pide entrar de nuevo.
+    // El script no aceptó la clave guardada (ni siquiera al reintentar). La app NO cierra la sesión sola: seguir trabajando con
+    // lo que hay en el dispositivo es mejor que dejar al DT afuera en plena cancha por un rechazo pasajero. Se muestra un
+    // cartel con el botón para entrar de nuevo, y se oculta solo si un pedido posterior sale bien.
+    claveRechazada() {
+      const aviso = $('claveAviso');
+      if (aviso) aviso.hidden = false;
+    },
+    claveAceptada() {
+      const aviso = $('claveAviso');
+      if (aviso && !aviso.hidden) aviso.hidden = true;
+    },
+
+    // Cierra la sesión a pedido (botón "Entrar de nuevo" del cartel) y pide la clave otra vez.
     sesionInvalida() {
-      avisar('Tu clave ya no es válida. Ingresá de nuevo.');
+      avisar('Ingresá de nuevo con tu clave.');
       salirYRecargar();
+    },
+
+    // Historial de conexión (sin claves): qué pedidos se hicieron, cuánto tardaron y cómo salieron. Se ve en Ajustes → Conexión.
+    registrar(tipo, ms, resultado, nota) {
+      try {
+        const lista = Acceso.diagnostico();
+        lista.push({ t: Date.now(), tipo, ms: Math.round(ms), res: resultado, nota: nota || '' });
+        localStorage.setItem(DIAG_KEY, JSON.stringify(lista.slice(-DIAG_MAX)));
+      } catch (err) { /* sin localStorage */ }
+    },
+    diagnostico() {
+      try {
+        const lista = JSON.parse(localStorage.getItem(DIAG_KEY) || '[]');
+        return Array.isArray(lista) ? lista.filter(e => e && typeof e.t === 'number') : [];
+      } catch (err) { return []; }
+    },
+    borrarDiagnostico() {
+      try { localStorage.removeItem(DIAG_KEY); } catch (err) { /* sin localStorage */ }
     },
 
     cerrarSesion() {
@@ -119,6 +151,8 @@
       document.body.dataset.rol = sesion.rol;
       const engranaje = $('ajustesBtn');
       if (engranaje) engranaje.hidden = Acceso.nivel('ajustes') !== 'editar';
+      const avisoBtn = $('claveAvisoBtn');
+      if (avisoBtn) avisoBtn.addEventListener('click', () => Acceso.sesionInvalida());
       const btn = $('logoutBtn');
       let armado = null;
       btn.addEventListener('click', () => {
@@ -167,7 +201,12 @@
       error.textContent = '';
       boton.disabled = true;
       boton.textContent = 'Entrando…';
+      // Google a veces tarda varios segundos en contestar: se avisa para que no parezca que quedó colgado.
+      const espera = setTimeout(() => { boton.textContent = 'Verificando con Google… puede tardar'; }, 3000);
+      const t0 = Date.now();
       const r = await window.SheetsSync.verificar(creds);
+      clearTimeout(espera);
+      Acceso.registrar('entrada', Date.now() - t0, r.estado === 'ok' ? 'ok' : r.estado);
       boton.disabled = false;
       boton.textContent = 'Entrar';
       let estado = r.estado;
