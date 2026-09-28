@@ -11,7 +11,7 @@ JavaScript busca por `document.getElementById` / `querySelectorAll`.
 flowchart TD
     LoginGate["#loginGate (#loginRol / #loginNombre / #loginClave / #loginBtn) / #appRoot"] --> AccesoJS["js/acceso.js"]
 
-    Header["header (#rolChip, #syncStatus, #logoutBtn) + #candadoAviso"] --> SheetsIntegration["js/sheets-integration.js: setStatus()"]
+    Header["header (#rolChip, #ajustesBtn, #syncStatus, #logoutBtn) + #candadoAviso"] --> SheetsIntegration["js/sheets-integration.js: setStatus()"]
     Header --> AccesoJS
 
     TabsNav["#groupTabs (Equipo / Planificar / Partido) + #subTabs (las solapas del grupo elegido)"] --> AppTabs["js/app.js: setupTabs() / showTab()"]
@@ -74,14 +74,14 @@ flowchart TD
 ## Notas de estructura
 
 - **`#loginGate`** / **`#appRoot`**: son dos contenedores hermanos, no
-  anidados. `#appRoot` arranca con `hidden` puesto directamente en el
-  HTML (no por JS) para que no haya un instante de "flash" de la app
-  antes de que [js/acceso.js](js/acceso.md) decida si mostrarla. Todo lo
+  anidados. Los dos arrancan con `hidden` puesto directamente en el
+  HTML (no por JS) para que no haya un instante de "flash" ni de la app ni de la
+  pantalla de entrada antes de que [js/acceso.js](js/acceso.md) decida si mostrarla. Todo lo
   que describe el resto de este documento (header, tabs, las ocho
   solapas) vive **dentro** de `#appRoot`.
 - **La pantalla de entrada** (`#loginGate`) tiene `#loginRol` (DT / soporte; jugadora se agrega cuando esté su
   vista), `#loginNombre` (solo para soporte y jugadoras), `#loginClave`, `#loginBtn` y `#loginError`.
-  **`#rolChip`** (en el header) dice quién entró, y **`#candadoAviso`** es el cartel amarillo que ve el DT mientras el
+  **`#rolChip`** (en el header) dice quién entró, **`#ajustesBtn`** (el engranaje, solo para el DT) abre el diálogo **`#ajustes`** de [js/ajustes.js](js/ajustes.md) (`#ajustesCerrar`, las pestañas `.ajustes-tab`, `#accesosJugadoras`, `#accesosSoporte`, `#accesoSoporteForm`, `#permisosTabla`), y **`#candadoAviso`** es el cartel amarillo que ve el DT mientras el
   Apps Script no tenga el candado activado. El botón **`#logoutBtn`** pide dos toques.
 - **`#groupTabs`** y **`#subTabs`** son la navegación en dos niveles. Arriba (`.tab-btn`,
   con `data-group`) están los tres grupos: Equipo (Evaluador, Jugadora, Entrenamiento),
@@ -133,10 +133,10 @@ flowchart TD
   `[hidden] { display: none !important; }` cerca del principio — sin
   ella, los formularios de arriba quedaban siempre visibles aunque el
   atributo `hidden` estuviera bien puesto (bug real que hubo en la app).
-- Carga nueve `<script>` al final del `<body>`, en este orden:
+- Carga diez `<script>` al final del `<body>`, en este orden:
   `acceso.js`, Chart.js (CDN), `sheets-integration.js`, `app.js`, `tactica.js`,
-  `simulacion-media.js`, `simulacion.js`, `partido.js`, `jugados.js`
-  (`jugados.js` va después de `partido.js` porque usa `window.PartidoUtil`).
+  `simulacion-media.js`, `simulacion.js`, `partido.js`, `jugados.js`, `ajustes.js`
+  (`jugados.js` va después de `partido.js` porque usa `window.PartidoUtil`; `ajustes.js` va al final porque usa `Acceso`, `SheetsSync` y el `state`).
   `acceso.js` va primero porque decide si el resto siquiera se ve y de quién son los datos; el
   resto del orden importa porque `app.js` usa `window.SheetsSync` y
   `Chart` al arrancar. `tactica.js` va después de `app.js` porque usa sus
@@ -189,5 +189,6 @@ flowchart TD
 | [js/simulacion-media.js](js/simulacion-media.md) | Dibujo (SVG y canvas) y grabación de video |
 | [js/partido.js](js/partido.md) | Solapa En vivo: reloj, marcador, jugadas, cancha propia y cambios |
 | [js/jugados.js](js/jugados.md) | Solapa Jugados: los partidos ya terminados, con su resumen y línea de tiempo |
+| [js/ajustes.js](js/ajustes.md) | Panel de Ajustes (solo el DT): accesos, política de datos y permisos |
 
 Ver también [GLOSSARY.md](GLOSSARY.md).
