@@ -1,0 +1,546 @@
+// ==================================================================
+// DTCommander — Partido en vivo (barra "En vivo" de la solapa Formación)
+//
+// Reloj del partido (1.er tiempo, entretiempo, 2.º tiempo, final), marcador,
+// jugadas de un toque (gol nuestro, gol rival, jugada de gol, jugada peligrosa)
+// y cambios (por hacer -> hecho, con su minuto). Todo se guarda en
+// state.matchLogs (ver app.js) y viaja por la misma sincronización.
+// ==================================================================
+(function () {
+  const KIND_LABELS = { goal: 'Gol nuestro', goalRival: 'Gol rival', chance: 'Jugada de gol', danger: 'Jugada peligrosa' };
+  const PHASE_LABELS = { idle: 'Sin empezar', t1: '1.er tiempo', ht: 'Entretiempo', t2: '2.º tiempo', end: 'Final' };
+  const PHASE_BUTTONS = {
+    idle: 'Iniciar 1.er tiempo', t1: 'Fin del 1.er tiempo', ht: 'Iniciar 2.º tiempo', t2: 'Finalizar partido', end: 'Reabrir partido'
+  };
+  const ARM_MS = 3000;
+
+  let armedPhase = false;
+  let armedReset = false;
+  let armTimer = null;
+  let resetTimer = null;
+  let errorTimer = null;
+  let toastTimer = null;
+  let wakeLock = null;
+
+  const $ = id => document.getElementById(id);
+  const nowIso = () => new Date().toISOString();
+  const newId = prefix => prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+  const isRunning = meta => meta.phase === 't1' || meta.phase === 't2';
+
+  // ------------------------------------------------------------------
+  // Registro del partido activo
+  // ------------------------------------------------------------------
+  // null si todavía no se anotó nada; con create = true lo arma.
+  function recordOf(create) {
+    if (!Array.isArray(state.matchLogs)) state.matchLogs = [];
+    const id = state.activeMatch;
+    let rec = state.matchLogs.find(r => r.id === id) || null;
+    if (rec && rec.deleted) {
+      if (!create) return null;
+      rec.deleted = false;
+      rec.items = sanitizeLogItems([]);
+    }
+    if (!rec && create) {
+      const match = state.matches[id];
+      rec = { id, name: (match && match.rival) || '', createdAt: nowIso(), updatedAt: nowIso(), deleted: false, items: sanitizeLogItems([]) };
+      state.matchLogs.push(rec);
+    }
+    return rec;
+  }
+
+  const metaOf = rec => rec.items.find(i => i.type === 'meta');
+
+  function view() {
+    const rec = recordOf(false);
+    const items = rec ? rec.items : sanitizeLogItems([]);
+    return {
+      rec,
+      meta: items.find(i => i.type === 'meta'),
+      events: items.filter(i => i.type === 'event'),
+      subs: items.filter(i => i.type === 'sub')
+    };
+  }
+
+  function commit(rec) {
+    rec.updatedAt = nowIso();
+    const match = state.matches[rec.id];
+    if (match) rec.name = match.rival || '';
+    saveState();
+  }
+
+  // El partido borrado se marca como borrado (no se saca de la lista) para que una copia vieja no lo reviva.
+  window.removeMatchLog = function (matchId) {
+    if (!Array.isArray(state.matchLogs)) return;
+    const rec = state.matchLogs.find(r => r.id === matchId);
+    if (!rec) return;
+    rec.deleted = true;
+    rec.items = [];
+    rec.updatedAt = nowIso();
+  };
+
+  // ------------------------------------------------------------------
+  // Tiempo. Se guardan las horas de inicio y fin de cada tiempo, no un contador
+  // que va sumando: así el reloj sigue bien aunque se bloquee el celular, se
+  // cambie de solapa o se recargue la página.
+  // ------------------------------------------------------------------
+  // Segundos transcurridos DENTRO del tiempo en juego (o del último que se jugó).
+  function position(meta, now) {
+    const secs = (from, to) => Math.max(0, Math.floor((to - from) / 1000));
+    if (meta.phase === 't1') return { half: 1, sec: secs(meta.t1Start, now) };
+    if (meta.phase === 'ht') return { half: 1, sec: secs(meta.t1Start, meta.t1End) };
+    if (meta.phase === 't2') return { half: 2, sec: secs(meta.t2Start, now) };
+    if (meta.phase === 'end') return { half: 2, sec: secs(meta.t2Start, meta.t2End) };
+    return { half: 1, sec: 0 };
+  }
+
+  // El 2.º tiempo sigue contando desde el final del 1.º (25 min de duración -> arranca en 25:00).
+  const totalSec = (meta, pos) => (pos.half === 2 ? meta.duration * 60 : 0) + pos.sec;
+
+  function clockText(total) {
+    const m = Math.floor(total / 60);
+    const s = total % 60;
+    return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+  }
+
+  // Minuto que se está jugando: a los 23:10 es el minuto 24, como se dice en el fútbol.
+  const minuteNumber = (meta, half, sec) => (half === 2 ? meta.duration : 0) + Math.floor(sec / 60) + 1;
+
+  function minuteLabel(meta, half, sec) {
+    const minute = minuteNumber(meta, half, sec);
+    const cap = half === 2 ? meta.duration * 2 : meta.duration;
+    return minute > cap ? `${cap}+${minute - cap}'` : `${minute}'`;
+  }
+
+  // ------------------------------------------------------------------
+  // Mensajes
+  // ------------------------------------------------------------------
+  function showError(message) {
+    const el = $('liveError');
+    if (!el) return;
+    el.textContent = message;
+    clearTimeout(errorTimer);
+    errorTimer = setTimeout(() => { el.textContent = ''; }, 7000);
+  }
+
+  function showToast(message) {
+    const el = $('liveToast');
+    if (!el) return;
+    el.textContent = message;
+    el.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { el.hidden = true; }, 3500);
+  }
+
+  // ------------------------------------------------------------------
+  // Pantalla encendida mientras corre el reloj (si el navegador lo permite)
+  // ------------------------------------------------------------------
+  async function syncWakeLock(running) {
+    try {
+      if (running && !wakeLock && navigator.wakeLock && !document.hidden) {
+        wakeLock = await navigator.wakeLock.request('screen');
+        wakeLock.addEventListener('release', () => { wakeLock = null; });
+      } else if (!running && wakeLock) {
+        await wakeLock.release();
+        wakeLock = null;
+      }
+    } catch (err) {
+      wakeLock = null;
+    }
+  }
+
+  // ------------------------------------------------------------------
+  // Acciones: fases del partido
+  // ------------------------------------------------------------------
+  function currentPlacements() {
+    const plan = currentPlan();
+    if (!plan.formations[plan.activeFormation]) plan.formations[plan.activeFormation] = { placements: {} };
+    return plan.formations[plan.activeFormation].placements;
+  }
+
+  function disarmPhase() {
+    armedPhase = false;
+    clearTimeout(armTimer);
+  }
+
+  function changePhase() {
+    const meta = view().meta;
+    // Terminar un tiempo se confirma con un segundo toque (un toque de más en la cancha no debería cortar el reloj).
+    if ((meta.phase === 't1' || meta.phase === 't2') && !armedPhase) {
+      armedPhase = true;
+      clearTimeout(armTimer);
+      armTimer = setTimeout(() => { armedPhase = false; renderPartido(); }, ARM_MS);
+      renderPartido();
+      return;
+    }
+    disarmPhase();
+    const rec = recordOf(true);
+    const m = metaOf(rec);
+    const now = Date.now();
+    if (m.phase === 'idle') {
+      m.lineup = Object.keys(currentPlacements());
+      m.phase = 't1';
+      m.t1Start = now;
+      m.t1End = m.t2Start = m.t2End = null;
+    } else if (m.phase === 't1') {
+      m.phase = 'ht';
+      m.t1End = now;
+    } else if (m.phase === 'ht') {
+      m.phase = 't2';
+      m.t2Start = now;
+      m.t2End = null;
+    } else if (m.phase === 't2') {
+      m.phase = 'end';
+      m.t2End = now;
+    } else if (m.phase === 'end') {
+      // Reabrir: el 2.º tiempo sigue desde donde estaba, sin perder lo que ya corrió.
+      m.t2Start = now - (m.t2End - m.t2Start);
+      m.t2End = null;
+      m.phase = 't2';
+    }
+    commit(rec);
+    renderPartido();
+  }
+
+  // Ajustar el reloj: por si se olvidó de arrancarlo justo cuando salió la pelota.
+  function nudge(deltaMinutes) {
+    const rec = recordOf(false);
+    if (!rec) return;
+    const m = metaOf(rec);
+    if (!isRunning(m)) return;
+    const key = m.phase === 't1' ? 't1Start' : 't2Start';
+    m[key] = Math.min(Date.now(), m[key] - deltaMinutes * 60000);
+    commit(rec);
+    renderPartido();
+  }
+
+  function setDuration(minutes) {
+    if (!MATCH_DURATIONS.includes(minutes)) return;
+    const rec = recordOf(true);
+    metaOf(rec).duration = minutes;
+    commit(rec);
+    renderPartido();
+  }
+
+  function resetLog() {
+    if (!armedReset) {
+      armedReset = true;
+      $('liveResetBtn').textContent = '¿Seguro? Tocá de nuevo';
+      clearTimeout(resetTimer);
+      resetTimer = setTimeout(() => { armedReset = false; $('liveResetBtn').textContent = 'Borrar registro'; }, ARM_MS);
+      return;
+    }
+    armedReset = false;
+    clearTimeout(resetTimer);
+    $('liveResetBtn').textContent = 'Borrar registro';
+    const rec = recordOf(false);
+    if (!rec) return;
+    rec.items = sanitizeLogItems([]);
+    commit(rec);
+    renderPartido();
+  }
+
+  // ------------------------------------------------------------------
+  // Acciones: jugadas
+  // ------------------------------------------------------------------
+  function addEvent(kind) {
+    const rec = recordOf(true);
+    const meta = metaOf(rec);
+    if (rec.items.filter(i => i.type === 'event').length >= MAX_LOG_EVENTS) {
+      showError('Ya hay demasiadas jugadas anotadas en este partido.');
+      return;
+    }
+    const pos = position(meta, Date.now());
+    rec.items.push({ id: newId('e'), type: 'event', kind, half: pos.half, sec: pos.sec, player: '', assist: '', note: '' });
+    commit(rec);
+    renderPartido();
+    const detail = kind === 'goal' ? ' Después completá quién la metió.' : '';
+    showToast(`${KIND_LABELS[kind]} · ${minuteLabel(meta, pos.half, pos.sec)}.${detail}`);
+  }
+
+  function updateEvent(id, field, value) {
+    const rec = recordOf(false);
+    if (!rec) return;
+    const ev = rec.items.find(i => i.type === 'event' && i.id === id);
+    if (!ev) return;
+    const meta = metaOf(rec);
+    if (field === 'minute') {
+      const minute = Math.round(Number(value));
+      // Sin cambios (o algo que no es un minuto): se deja como estaba, así no se pierden los segundos ni el tiempo agregado.
+      if (!Number.isFinite(minute) || minute < 1 || minute === minuteNumber(meta, ev.half, ev.sec)) { renderPartido(); return; }
+      if (minute <= meta.duration) {
+        ev.half = 1;
+        ev.sec = (minute - 1) * 60;
+      } else {
+        ev.half = 2;
+        ev.sec = Math.min(7200, (minute - meta.duration - 1) * 60);
+      }
+    } else if (field === 'player' || field === 'assist') {
+      ev[field] = String(value).slice(0, 40);
+    } else if (field === 'note') {
+      ev.note = String(value).slice(0, 120);
+    } else {
+      return;
+    }
+    commit(rec);
+    renderPartido();
+  }
+
+  function removeEvent(id) {
+    const rec = recordOf(false);
+    if (!rec) return;
+    rec.items = rec.items.filter(i => !(i.type === 'event' && i.id === id));
+    commit(rec);
+    renderPartido();
+  }
+
+  // ------------------------------------------------------------------
+  // Acciones: cambios
+  // ------------------------------------------------------------------
+  function addSub(out, inn) {
+    if (!out || !inn) { showError('Elegí quién sale y quién entra.'); return false; }
+    const placements = currentPlacements();
+    if (!placements[out]) { showError(`${out} no está en la cancha que estás viendo.`); return false; }
+    if (placements[inn]) { showError(`${inn} ya está en la cancha.`); return false; }
+    const rec = recordOf(true);
+    if (rec.items.filter(i => i.type === 'sub').length >= MAX_LOG_SUBS) { showError('Ya hay demasiados cambios en este partido.'); return false; }
+    rec.items.push({ id: newId('s'), type: 'sub', out, in: inn, status: 'pending', half: 1, sec: 0 });
+    commit(rec);
+    return true;
+  }
+
+  // Hecho: entra la nueva jugadora en el lugar de la que sale, y queda anotado el minuto.
+  function doSub(id) {
+    const rec = recordOf(false);
+    if (!rec) return;
+    const sub = rec.items.find(i => i.type === 'sub' && i.id === id);
+    if (!sub || sub.status !== 'pending') return;
+    const placements = currentPlacements();
+    if (!placements[sub.out]) { showError(`${sub.out} no está en la cancha que estás viendo (¿otro plan o formación?). Cambiá de plan o quitá el cambio.`); return; }
+    if (placements[sub.in]) { showError(`${sub.in} ya está en la cancha.`); return; }
+    placements[sub.in] = { x: placements[sub.out].x, y: placements[sub.out].y };
+    delete placements[sub.out];
+    const pos = position(metaOf(rec), Date.now());
+    sub.status = 'done';
+    sub.half = pos.half;
+    sub.sec = pos.sec;
+    commit(rec);
+    renderFormacion();
+    showToast(`Cambio hecho · ${minuteLabel(metaOf(rec), pos.half, pos.sec)}: sale ${sub.out}, entra ${sub.in}.`);
+  }
+
+  function undoSub(id) {
+    const rec = recordOf(false);
+    if (!rec) return;
+    const sub = rec.items.find(i => i.type === 'sub' && i.id === id);
+    if (!sub || sub.status !== 'done') return;
+    const placements = currentPlacements();
+    if (!placements[sub.in] || placements[sub.out]) {
+      showError(`No se puede deshacer: ${sub.in} tiene que estar en la cancha y ${sub.out} afuera (en la cancha que estás viendo).`);
+      return;
+    }
+    placements[sub.out] = { x: placements[sub.in].x, y: placements[sub.in].y };
+    delete placements[sub.in];
+    sub.status = 'pending';
+    sub.half = 1;
+    sub.sec = 0;
+    commit(rec);
+    renderFormacion();
+  }
+
+  function removeSub(id) {
+    const rec = recordOf(false);
+    if (!rec) return;
+    rec.items = rec.items.filter(i => !(i.type === 'sub' && i.id === id && i.status === 'pending'));
+    commit(rec);
+    renderPartido();
+  }
+
+  // ------------------------------------------------------------------
+  // Dibujo
+  // ------------------------------------------------------------------
+  function playerOptions(names, selected, placeholder) {
+    // Si el nombre guardado ya no existe (se borró la jugadora) se sigue mostrando, para no perder el dato.
+    const list = selected && !names.includes(selected) ? names.concat([selected]) : names;
+    return `<option value="">${placeholder}</option>` + list.map(n =>
+      `<option value="${escapeHtml(n)}"${n === selected ? ' selected' : ''}>${escapeHtml(n)}</option>`).join('');
+  }
+
+  function renderClock() {
+    const bar = $('liveBar');
+    if (!bar) return;
+    const meta = view().meta;
+    const pos = position(meta, Date.now());
+    $('liveClock').textContent = clockText(totalSec(meta, pos));
+    $('livePhase').textContent = PHASE_LABELS[meta.phase];
+    bar.classList.toggle('live-running', isRunning(meta));
+  }
+
+  function renderEvents(v) {
+    const el = $('liveEventList');
+    if (!v.events.length) {
+      el.innerHTML = '<p class="hint">Todavía no hay jugadas anotadas. Tocá los botones de arriba mientras se juega; el detalle lo completás después.</p>';
+      return;
+    }
+    const names = Object.keys(state.players);
+    const sorted = v.events
+      .map((ev, idx) => ({ ev, idx }))
+      .sort((a, b) => (b.ev.half - a.ev.half) || (b.ev.sec - a.ev.sec) || (b.idx - a.idx))
+      .map(x => x.ev);
+    el.innerHTML = sorted.map(ev => `
+      <div class="live-row live-row-${ev.kind}" data-id="${escapeHtml(ev.id)}">
+        <span class="live-kind live-kind-${ev.kind}">${KIND_LABELS[ev.kind]}</span>
+        <label class="live-min">Min
+          <input type="number" min="1" max="200" value="${minuteNumber(v.meta, ev.half, ev.sec)}" data-field="minute" aria-label="Minuto">
+        </label>
+        ${ev.kind === 'goal' ? `
+          <select data-field="player" aria-label="Quién metió el gol">${playerOptions(names, ev.player, 'Quién la metió…')}</select>
+          <select data-field="assist" aria-label="Quién asistió">${playerOptions(names, ev.assist, 'Asistencia (opcional)')}</select>` : ''}
+        ${ev.kind === 'chance' ? `
+          <select data-field="player" aria-label="Quién tuvo la jugada">${playerOptions(names, ev.player, 'Quién la tuvo…')}</select>` : ''}
+        <input type="text" class="live-note" data-field="note" maxlength="120" placeholder="Nota (opcional)" value="${escapeHtml(ev.note)}" aria-label="Nota">
+        <button type="button" class="btn btn-danger btn-small" data-act="remove-event" title="Borrar esta jugada">✕</button>
+      </div>`).join('');
+  }
+
+  function renderSubs(v) {
+    const pending = v.subs.filter(s => s.status === 'pending');
+    const done = v.subs
+      .filter(s => s.status === 'done')
+      .sort((a, b) => (a.half - b.half) || (a.sec - b.sec));
+
+    const chips = $('liveSubChips');
+    chips.hidden = !pending.length;
+    chips.innerHTML = pending.map(s => `
+      <span class="live-chip">
+        <span>${escapeHtml(s.out)} → ${escapeHtml(s.in)}</span>
+        <button type="button" class="btn btn-small" data-act="do-sub" data-id="${escapeHtml(s.id)}">Hecho</button>
+      </span>`).join('');
+
+    const list = $('liveSubList');
+    if (!pending.length && !done.length) {
+      list.innerHTML = '<p class="hint">Sin cambios. Armalos con "+ Cambio" y marcalos como "Hecho" cuando entren: se anota el minuto y la cancha se actualiza sola.</p>';
+      return;
+    }
+    list.innerHTML = pending.map(s => `
+      <div class="live-row live-row-sub-pending" data-id="${escapeHtml(s.id)}">
+        <span class="live-kind live-kind-sub-pending">Por hacer</span>
+        <span class="live-sub-text">Sale <strong>${escapeHtml(s.out)}</strong> · Entra <strong>${escapeHtml(s.in)}</strong></span>
+        <button type="button" class="btn btn-small" data-act="do-sub" data-id="${escapeHtml(s.id)}">Hecho</button>
+        <button type="button" class="btn btn-secondary btn-small" data-act="remove-sub" data-id="${escapeHtml(s.id)}">Quitar</button>
+      </div>`).join('') + done.map(s => `
+      <div class="live-row live-row-sub-done" data-id="${escapeHtml(s.id)}">
+        <span class="live-kind live-kind-sub-done">Hecho ${minuteLabel(v.meta, s.half, s.sec)}</span>
+        <span class="live-sub-text">Sale <strong>${escapeHtml(s.out)}</strong> · Entra <strong>${escapeHtml(s.in)}</strong></span>
+        <button type="button" class="btn btn-secondary btn-small" data-act="undo-sub" data-id="${escapeHtml(s.id)}">Deshacer</button>
+      </div>`).join('');
+  }
+
+  function fillSubForm() {
+    const placements = currentPlacements();
+    const onField = Object.keys(placements);
+    const bench = Object.keys(state.players).filter(n => !placements[n]);
+    const out = $('liveSubOut');
+    const inn = $('liveSubIn');
+    const keepOut = out.value;
+    const keepIn = inn.value;
+    out.innerHTML = '<option value="">Elegí…</option>' + onField.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
+    inn.innerHTML = '<option value="">Elegí…</option>' + bench.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
+    if (onField.includes(keepOut)) out.value = keepOut;
+    if (bench.includes(keepIn)) inn.value = keepIn;
+  }
+
+  function renderPartido() {
+    if (!$('liveBar')) return;
+    const v = view();
+    const dur = $('liveDuration');
+    if (!dur.options.length) dur.innerHTML = MATCH_DURATIONS.map(d => `<option value="${d}">${d} min por tiempo</option>`).join('');
+    dur.value = String(v.meta.duration);
+
+    renderClock();
+
+    const us = v.events.filter(e => e.kind === 'goal').length;
+    const them = v.events.filter(e => e.kind === 'goalRival').length;
+    $('liveScore').textContent = `${us} - ${them}`;
+    const match = state.matches[state.activeMatch];
+    $('liveRival').textContent = (match && match.rival) || 'Rival';
+
+    const btn = $('livePhaseBtn');
+    btn.textContent = armedPhase ? '¿Seguro? Tocá de nuevo' : PHASE_BUTTONS[v.meta.phase];
+    btn.classList.toggle('live-armed', armedPhase);
+    $('liveAdjust').hidden = !isRunning(v.meta);
+
+    renderSubs(v);
+    renderEvents(v);
+    if (!$('liveSubForm').hidden) fillSubForm();
+    syncWakeLock(isRunning(v.meta));
+  }
+
+  // ------------------------------------------------------------------
+  // Eventos de la pantalla
+  // ------------------------------------------------------------------
+  function subAction(e) {
+    const btn = e.target.closest('[data-act]');
+    if (!btn) return;
+    const id = btn.dataset.id;
+    if (btn.dataset.act === 'do-sub') doSub(id);
+    if (btn.dataset.act === 'undo-sub') undoSub(id);
+    if (btn.dataset.act === 'remove-sub') removeSub(id);
+  }
+
+  function setupPartido() {
+    if (!$('liveBar')) return;
+    $('livePhaseBtn').addEventListener('click', changePhase);
+    $('liveEventButtons').addEventListener('click', e => {
+      const btn = e.target.closest('[data-kind]');
+      if (btn) addEvent(btn.dataset.kind);
+    });
+    $('liveDuration').addEventListener('change', e => setDuration(Number(e.target.value)));
+    $('liveAdjust').addEventListener('click', e => {
+      const btn = e.target.closest('[data-nudge]');
+      if (btn) nudge(Number(btn.dataset.nudge));
+    });
+    $('liveResetBtn').addEventListener('click', resetLog);
+
+    $('liveAddSubBtn').addEventListener('click', () => {
+      const form = $('liveSubForm');
+      form.hidden = !form.hidden;
+      if (!form.hidden) fillSubForm();
+    });
+    $('liveSubCancel').addEventListener('click', () => { $('liveSubForm').hidden = true; });
+    $('liveSubConfirm').addEventListener('click', () => {
+      if (addSub($('liveSubOut').value, $('liveSubIn').value)) {
+        $('liveSubOut').value = '';
+        $('liveSubIn').value = '';
+        $('liveSubForm').hidden = true;
+        renderPartido();
+      }
+    });
+    $('liveSubChips').addEventListener('click', subAction);
+    $('liveSubList').addEventListener('click', subAction);
+
+    const eventList = $('liveEventList');
+    eventList.addEventListener('click', e => {
+      const btn = e.target.closest('[data-act="remove-event"]');
+      if (btn) removeEvent(btn.closest('.live-row').dataset.id);
+    });
+    // "change" (no "input"): se guarda al salir del campo, sin redibujar la lista mientras se escribe.
+    eventList.addEventListener('change', e => {
+      const field = e.target.closest('[data-field]');
+      const row = e.target.closest('.live-row');
+      if (field && row) updateEvent(row.dataset.id, field.dataset.field, field.value);
+    });
+
+    const wake = $('liveWakeHint');
+    if (wake && navigator.wakeLock) wake.textContent = 'Mientras corre el reloj, la pantalla se mantiene encendida.';
+
+    setInterval(() => { if (!document.hidden) renderClock(); }, 250);
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) return;
+      renderClock();
+      syncWakeLock(isRunning(view().meta));
+    });
+  }
+
+  window.setupPartido = setupPartido;
+  window.renderPartido = renderPartido;
+})();
