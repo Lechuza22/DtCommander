@@ -27,13 +27,21 @@
     <span id="syncStatus" class="sync-status sync-local" title="Iniciando…">●</span>
   </header>
 
-  <nav class="tabs">
-    <button class="tab-btn active" data-tab="panel-evaluador">Evaluador</button>
-    <button class="tab-btn" data-tab="panel-jugadora">Jugadora</button>
-    <button class="tab-btn" data-tab="panel-formacion">Formación</button>
-    <button class="tab-btn" data-tab="panel-tactica">Táctica</button>
-    <button class="tab-btn" data-tab="panel-simulacion">Simulación</button>
-    <button class="tab-btn" data-tab="panel-entrenamiento">Entrenamiento</button>
+  <!-- Navegación en dos niveles, según el momento en que se usa cada cosa: Equipo (conocer y desarrollar a las
+       jugadoras), Planificar (lo de antes del partido) y Partido (durante y después). -->
+  <nav class="tabs" id="groupTabs">
+    <button class="tab-btn active" data-group="equipo">Equipo</button>
+    <button class="tab-btn" data-group="planificar">Planificar</button>
+    <button class="tab-btn" data-group="partido">Partido</button>
+  </nav>
+  <nav class="subtabs" id="subTabs">
+    <button class="subtab-btn active" data-group="equipo" data-tab="panel-evaluador">Evaluador</button>
+    <button class="subtab-btn" data-group="equipo" data-tab="panel-jugadora">Jugadora</button>
+    <button class="subtab-btn" data-group="equipo" data-tab="panel-entrenamiento">Entrenamiento</button>
+    <button class="subtab-btn" data-group="planificar" data-tab="panel-formacion" hidden>Formación</button>
+    <button class="subtab-btn" data-group="planificar" data-tab="panel-tactica" hidden>Táctica</button>
+    <button class="subtab-btn" data-group="planificar" data-tab="panel-simulacion" hidden>Simulación</button>
+    <button class="subtab-btn" data-group="partido" data-tab="panel-partido" hidden>En vivo</button>
   </nav>
 
   <main class="container">
@@ -161,30 +169,6 @@
 
     <!-- ===== FORMACIÓN ===== -->
     <section id="panel-formacion" class="tab-panel">
-      <!-- Barra "En vivo": reloj, marcador y jugadas de un toque. Queda fija arriba mientras se mira la cancha. -->
-      <div class="live-bar" id="liveBar">
-        <div class="live-top">
-          <div class="live-clock-box">
-            <span id="liveClock" class="live-clock">00:00</span>
-            <span id="livePhase" class="live-phase">Sin empezar</span>
-          </div>
-          <div class="live-score" title="Marcador">
-            <span class="live-team">Nosotras</span>
-            <span id="liveScore" class="live-score-num">0 - 0</span>
-            <span id="liveRival" class="live-team">Rival</span>
-          </div>
-          <button type="button" id="livePhaseBtn" class="btn live-main-btn">Iniciar 1.er tiempo</button>
-        </div>
-        <div class="live-events" id="liveEventButtons">
-          <button type="button" class="live-ev-btn live-ev-goal" data-kind="goal">Gol<br>nuestro</button>
-          <button type="button" class="live-ev-btn live-ev-goalRival" data-kind="goalRival">Gol<br>rival</button>
-          <button type="button" class="live-ev-btn live-ev-chance" data-kind="chance">Jugada<br>de gol</button>
-          <button type="button" class="live-ev-btn live-ev-danger" data-kind="danger">Jugada<br>peligrosa</button>
-        </div>
-        <div id="liveToast" class="live-toast" role="status" hidden></div>
-        <div id="liveSubChips" class="live-chips" hidden></div>
-      </div>
-
       <div class="card">
         <div class="roster-controls">
           <select id="matchSelect"></select>
@@ -229,6 +213,85 @@
 
         <div class="card field-panel">
           <svg id="field" viewBox="0 0 300 400" preserveAspectRatio="xMidYMid meet">
+            <rect x="0" y="0" width="300" height="400" class="field-bg"></rect>
+            <rect x="10" y="10" width="280" height="380" class="field-border"></rect>
+            <line x1="10" y1="200" x2="290" y2="200" class="field-line"></line>
+            <circle cx="150" cy="200" r="40" class="field-line-fill"></circle>
+            <rect x="90" y="10" width="120" height="55" class="field-line-fill"></rect>
+            <rect x="90" y="335" width="120" height="55" class="field-line-fill"></rect>
+            <path d="M122,10 L122,2 L178,2 L178,10 Z" class="field-goal"></path>
+            <path d="M122,390 L122,398 L178,398 L178,390 Z" class="field-goal"></path>
+          </svg>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== PARTIDO (en vivo: reloj, marcador, jugadas, cambios y la cancha del partido) ===== -->
+    <section id="panel-partido" class="tab-panel">
+      <!-- Barra "En vivo": reloj, marcador y jugadas de un toque. Queda fija arriba mientras se mira la cancha. -->
+      <div class="live-bar" id="liveBar">
+        <div class="live-top">
+          <div class="live-clock-box">
+            <span id="liveClock" class="live-clock">00:00</span>
+            <span id="livePhase" class="live-phase">Sin empezar</span>
+          </div>
+          <div class="live-score" title="Marcador">
+            <span class="live-team">Nosotras</span>
+            <span id="liveScore" class="live-score-num">0 - 0</span>
+            <span id="liveRival" class="live-team">Rival</span>
+          </div>
+          <button type="button" id="livePhaseBtn" class="btn live-main-btn">Iniciar 1.er tiempo</button>
+        </div>
+        <div class="live-events" id="liveEventButtons">
+          <button type="button" class="live-ev-btn live-ev-goal" data-kind="goal">Gol<br>nuestro</button>
+          <button type="button" class="live-ev-btn live-ev-goalRival" data-kind="goalRival">Gol<br>rival</button>
+          <button type="button" class="live-ev-btn live-ev-chance" data-kind="chance">Jugada<br>de gol</button>
+          <button type="button" class="live-ev-btn live-ev-danger" data-kind="danger">Jugada<br>peligrosa</button>
+        </div>
+        <div id="liveToast" class="live-toast" role="status" hidden></div>
+        <div id="liveSubChips" class="live-chips" hidden></div>
+      </div>
+
+      <!-- Elegir el partido y traer la alineación. Se abre solo antes de empezar y se pliega cuando arranca el partido, para dejar a la vista la cancha. -->
+      <details class="card live-setup" id="liveSetup" open>
+        <summary id="liveSetupSummary">Partido y alineación</summary>
+        <div class="roster-controls">
+          <select id="liveMatchSelect" title="Partido"></select>
+          <button type="button" id="liveAddMatchBtn" class="btn">+ Partido</button>
+        </div>
+        <div id="liveAddMatchForm" class="add-player-form" hidden>
+          <input type="text" id="liveNewMatchRival" placeholder="Rival (vs...)" maxlength="40">
+          <input type="date" id="liveNewMatchDate">
+          <button type="button" id="liveConfirmAddMatchBtn" class="btn">Agregar</button>
+          <button type="button" id="liveCancelAddMatchBtn" class="btn btn-secondary">Cancelar</button>
+          <span id="liveAddMatchError" class="form-error"></span>
+        </div>
+
+        <!-- La cancha del partido es una COPIA de la alineación que se elija acá: lo que se mueva o cambie durante el partido no toca los planes de Formación. -->
+        <div class="formation-controls live-bring">
+          <label>Traer alineación de
+            <select id="liveSourceKind">
+              <option value="plan">Formación del partido</option>
+              <option value="tactic">Táctica guardada</option>
+            </select>
+          </label>
+          <label id="liveSourcePlanBox">Plan <select id="liveSourcePlan"></select></label>
+          <label id="liveSourceFormationBox">Forma <select id="liveSourceFormation"></select></label>
+          <label id="liveSourceTacticBox" hidden>Táctica <select id="liveSourceTactic"></select></label>
+          <button type="button" id="liveBringBtn" class="btn">Traer alineación</button>
+        </div>
+        <p id="liveBringHint" class="hint"></p>
+        <p id="liveBringError" class="form-error"></p>
+      </details>
+
+      <div class="field-layout">
+        <div class="card available-panel">
+          <h2>Banco</h2>
+          <div id="liveAvailable" class="available-list"></div>
+        </div>
+
+        <div class="card field-panel">
+          <svg id="matchField" viewBox="0 0 300 400" preserveAspectRatio="xMidYMid meet">
             <rect x="0" y="0" width="300" height="400" class="field-bg"></rect>
             <rect x="10" y="10" width="280" height="380" class="field-border"></rect>
             <line x1="10" y1="200" x2="290" y2="200" class="field-line"></line>
