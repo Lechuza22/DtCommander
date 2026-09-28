@@ -80,10 +80,13 @@ sea fácil ubicar qué tocar.
   grupo activo, así queda como una continuación de él; se desplaza de costado en pantallas
   chicas y se oculta si el grupo tiene una sola solapa.
 - **Partido en vivo**: `#matchField` comparte con `#field` el estilo de la cancha,
-  `.live-setup` es el panel plegable de arriba (`<details>`), y `.live-bar` (la barra
-  de arriba de Partido: `position:
-  sticky; top: 0` para que quede a la vista mientras se mira la cancha, con
-  `.live-running` cuando el reloj corre), `.live-top` con `.live-clock-box` /
+  `.live-setup` es el panel plegable de arriba (`<details>`), `.live-suggestions` (con
+  `.live-sugg-row` y `.sugg-rating`) es el panel de perfil y cambios sugeridos de la
+  jugadora elegida (dentro del banco en escritorio y una hoja fija abajo en celular) y
+  `.player-token.selected` marca con borde amarillo a la jugadora elegida. `.live-bar`
+  es la barra de arriba de Partido (`position: sticky; top: 0` para que quede a la
+  vista mientras se mira la cancha, con `.live-running` cuando el reloj corre),
+  `.live-top` con `.live-clock-box` /
   `.live-clock` / `.live-phase` / `.live-score` / `.live-main-btn` (el botón que
   avanza la fase; `.live-armed` cuando pide el segundo toque para terminar un
   tiempo), `.live-events` con `.live-ev-btn` (los cuatro botones de jugada, en una
