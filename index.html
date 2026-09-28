@@ -12,10 +12,11 @@
       <h1>⚽ DTCommander</h1>
       <p class="hint">Ingresá para continuar</p>
       <form id="loginForm">
-        <input type="email" id="loginEmail" placeholder="Email" autocomplete="username" required>
-        <input type="password" id="loginPassword" placeholder="Contraseña" autocomplete="current-password" required>
-        <button type="submit" class="btn">Entrar</button>
-        <span id="loginError" class="form-error"></span>
+        <select id="loginRol" aria-label="Entro como"></select>
+        <input type="text" id="loginNombre" placeholder="Tu nombre" autocomplete="username" maxlength="60" hidden>
+        <input type="password" id="loginClave" placeholder="Clave" autocomplete="current-password" required>
+        <button type="submit" class="btn" id="loginBtn">Entrar</button>
+        <span id="loginError" class="form-error" role="alert"></span>
       </form>
     </div>
   </div>
@@ -23,9 +24,14 @@
   <div id="appRoot" hidden>
   <header>
     <h1>⚽ DTCommander</h1>
-    <button id="logoutBtn" class="btn-logout" title="Cerrar sesión">⏻</button>
+    <span id="rolChip" class="rol-chip" hidden></span>
+    <button id="logoutBtn" class="btn-logout" title="Cerrar sesión (tocá dos veces)">⏻</button>
     <span id="syncStatus" class="sync-status sync-local" title="Iniciando…">●</span>
   </header>
+  <div id="candadoAviso" class="candado-aviso" role="alert" hidden>
+    El candado todavía no está activado: los datos del equipo siguen abiertos a cualquiera que tenga la dirección del script.
+    Pegá el script nuevo y agregá la propiedad DT_KEY (paso a paso en SETUP.md); después vas a tener que volver a entrar con tu clave.
+  </div>
 
   <!-- Navegación en dos niveles, según el momento en que se usa cada cosa: Equipo (conocer y desarrollar a las
        jugadoras), Planificar (lo de antes del partido) y Partido (durante y después). -->
@@ -632,7 +638,7 @@
   </main>
   </div>
 
-  <script src="js/auth.js"></script>
+  <script src="js/acceso.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
   <script src="js/sheets-integration.js"></script>
   <script src="js/app.js"></script>
