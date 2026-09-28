@@ -40,6 +40,11 @@
       <button id="logoutBtn" class="btn-logout" title="Cerrar sesión (tocá dos veces)">⏻</button>
     </div>
   </header>
+  <div id="claveAviso" class="candado-aviso clave-aviso" role="alert" hidden>
+    <span>El script no aceptó la clave guardada en este dispositivo. Podés seguir trabajando: lo que hagas queda guardado acá, pero no llega a la Sheet hasta que vuelvas a entrar.</span>
+    <button type="button" id="claveAvisoBtn" class="btn btn-small">Entrar de nuevo</button>
+  </div>
+  <div id="cargandoAviso" class="cargando-aviso" role="status" hidden>Cargando los datos del equipo desde Google… puede tardar unos segundos. Mientras tanto se ven datos de ejemplo.</div>
   <div id="candadoAviso" class="candado-aviso" role="alert" hidden>
     El candado todavía no está activado: los datos del equipo siguen abiertos a cualquiera que tenga la dirección del script.
     Pegá el script nuevo y agregá la propiedad DT_KEY (paso a paso en SETUP.md); después vas a tener que volver a entrar con tu clave.
@@ -660,6 +665,7 @@
         <button type="button" class="ajustes-tab active" role="tab" data-pestana="accesos">Accesos</button>
         <button type="button" class="ajustes-tab" role="tab" data-pestana="politica">Política de datos</button>
         <button type="button" class="ajustes-tab" role="tab" data-pestana="permisos">Permisos</button>
+        <button type="button" class="ajustes-tab" role="tab" data-pestana="conexion">Conexión</button>
       </div>
 
       <div class="ajustes-body">
@@ -726,6 +732,15 @@
           <div class="permisos-scroll">
             <table id="permisosTabla" class="permisos-tabla"></table>
           </div>
+        </section>
+
+        <section id="ajustes-conexion" data-pestana="conexion" hidden>
+          <p class="hint">Cuánto tardó cada pedido a Google en este dispositivo y cómo salió. Si cargar los datos tarda más de unos 10 segundos, la demora es del servicio de Google (Apps Script), no de la app.</p>
+          <p id="conexionResumen" class="conexion-resumen"></p>
+          <div class="permisos-scroll">
+            <table id="conexionTabla" class="permisos-tabla"></table>
+          </div>
+          <button type="button" id="conexionBorrar" class="btn btn-secondary btn-small">Borrar historial</button>
         </section>
       </div>
     </div>
