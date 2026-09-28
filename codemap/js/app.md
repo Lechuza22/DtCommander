@@ -7,7 +7,9 @@ cuatro pestañas propias (Táctica y Simulación viven en
 [js/tactica.js](tactica.md) y [js/simulacion.js](simulacion.md)): Evaluador (sliders + radar chart, uno al lado del otro),
 Jugadora (dashboard de solo lectura con el progreso en el tiempo),
 Formación (historial de Partidos → Plan A/B/C → forma táctica → campo SVG
-con arrastrar-y-soltar y sugerencias de alternativas) y Entrenamiento
+con arrastrar-y-soltar y sugerencias de alternativas; con la barra "En vivo"
+de [js/partido.js](partido.md) para llevar el reloj, el marcador, las jugadas y
+los cambios mientras se juega) y Entrenamiento
 (sugerencias por posición + rúbrica manual, sin tocar atributos).
 
 ## Jerarquía de datos en Formación
@@ -31,6 +33,7 @@ flowchart TD
     DOMLoad["DOMContentLoaded"] --> setupTabs
     DOMLoad --> setupEvaluador
     DOMLoad --> setupFormacion
+    DOMLoad --> setupPartido["setupPartido() (js/partido.js)"]
     DOMLoad --> setupDashboard
     DOMLoad --> setupTactica["setupTactica() (js/tactica.js)"]
     DOMLoad --> setupSimulacion["setupSimulacion() (js/simulacion.js)"]
@@ -39,6 +42,7 @@ flowchart TD
     Hydrate -->|hay datos remotos| normalizeRemoteState --> renderAll
     normalizeRemoteState --> mergeTactics
     normalizeRemoteState --> mergeSimulations
+    normalizeRemoteState --> mergeMatchLogs
 
     renderAll --> renderPlayerSelect
     renderAll --> renderEvaluador
@@ -69,6 +73,7 @@ flowchart TD
 
     renderFormacion --> renderMatchSelect
     renderFormacion --> renderPlanTabs
+    renderFormacion --> renderPartido["renderPartido() (js/partido.js)"]
     renderFormacion --> createFieldToken
     createFieldToken -->|pointerdown| onTokenPointerDown
     createFieldToken -->|"pointerenter/leave"| showSuggestions & hideSuggestions
@@ -178,6 +183,27 @@ modelo: un item `seq` (la marca), `step` (`ph` = número de paso, `dur` de 0,3 a
 (40). Un `move` sin camino válido se descarta y los puntos inválidos de un
 camino se quitan. Se siguen aceptando y sincronizando para que no se pierdan
 de la Sheet, aunque ninguna solapa las muestre.
+
+### Partido en vivo: `state.matchLogs` / `sanitizeLogItems` / `sanitizeMatchLog(s)` / `mergeMatchLogs`
+
+La séptima clave de `state`: un registro por partido con el reloj, las jugadas
+y los cambios de la barra "En vivo" de Formación (la UI vive en
+[js/partido.js](partido.md), donde está el detalle de cada item). Mismo esquema
+que las tácticas y simulaciones (`{ id, name, createdAt, updatedAt, deleted,
+items[] }`, con el `id` del partido) y mismos mecanismos: `sanitizeMatchLogs`
+limpia lo que llega de afuera y `mergeMatchLogs` (que usa `mergeById`) une lo
+local con la Sheet por `updatedAt`, con borrado "blando".
+
+Va **aparte de `state.matches`** a propósito: `normalizeRemoteState`
+reconstruye cada partido desde lo que trae la Sheet (rival, fecha y planes) y se
+llevaría cualquier campo que no conozca. Además el merge por `updatedAt` es lo
+que protege a un partido anotado en la cancha sin señal: si al abrir la app la
+Sheet trae una copia vieja, gana lo local. Los items son tres (`meta`, `event`
+y `sub`); `sanitizeLogItems` siempre devuelve exactamente un `meta`, descarta
+jugadas y cambios inválidos, limita la cantidad (`MAX_LOG_EVENTS` 300,
+`MAX_LOG_SUBS` 60), acota los segundos y corrige una fase a la que le faltan sus
+marcas de tiempo. Eliminar un partido llama a `removeMatchLog`, que deja su
+registro marcado como borrado.
 
 ### `SCORE_SCALE` / `toScore(raw)` / `formatScore(score)` / `formatAttrValue(raw)`
 
