@@ -574,9 +574,11 @@ function mergeSimulations(localList, remoteList) {
 // Mismo formato que Tácticas y Simulaciones: viaja por la misma hoja genérica del Apps Script y se une con la
 // Sheet por updatedAt. No se puede pisar lo local: un partido anotado en la cancha, sin señal, se perdería.
 // Los items son una lista plana:
-//   { type: 'meta', duration, phase, t1Start, t1End, t2Start, t2End, lineup[] }  uno solo por partido
+//   { type: 'meta', duration, phase, t1Start, t1End, t2Start, t2End, lineup[], field{} }  uno solo por partido
 //        duration = minutos de CADA tiempo; phase = idle | t1 | ht | t2 | end; los t* son milisegundos
-//        (Date.now) y lineup = quiénes estaban en la cancha al arrancar el 1.er tiempo
+//        (Date.now); lineup = quiénes estaban en la cancha al arrancar el 1.er tiempo; field = la cancha del
+//        partido en este momento ({ nombre: { x, y } }): es una COPIA de la alineación que se trajo de
+//        Formación o de una táctica, y los cambios y movimientos del partido tocan solo esta copia
 //   { type: 'event', id, kind, half, sec, player, assist, note }  kind = goal | goalRival | chance | danger;
 //        half y sec = tiempo (1 o 2) y segundos transcurridos DENTRO de ese tiempo
 //   { type: 'sub', id, out, in, status, half, sec }  status = pending (por hacer) | done (hecho, con su minuto)
@@ -586,6 +588,23 @@ const MATCH_PHASES = ['idle', 't1', 'ht', 't2', 'end'];
 const MATCH_EVENT_KINDS = ['goal', 'goalRival', 'chance', 'danger'];
 const MAX_LOG_EVENTS = 300;
 const MAX_LOG_SUBS = 60;
+
+// La cancha del partido: hasta 30 jugadoras con su posición, siempre dentro de los límites de la cancha.
+function sanitizeLiveField(raw) {
+  const out = {};
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
+  Object.keys(raw).slice(0, 30).forEach(name => {
+    const p = raw[name];
+    const x = p && p.x !== '' && p.x !== null ? Number(p.x) : NaN;
+    const y = p && p.y !== '' && p.y !== null ? Number(p.y) : NaN;
+    if (!name || name.length > 40 || !Number.isFinite(x) || !Number.isFinite(y)) return;
+    out[name] = {
+      x: Math.min(FIELD_BOUNDS.maxX, Math.max(FIELD_BOUNDS.minX, x)),
+      y: Math.min(FIELD_BOUNDS.maxY, Math.max(FIELD_BOUNDS.minY, y))
+    };
+  });
+  return out;
+}
 
 function sanitizeLogItems(items) {
   const list = Array.isArray(items) ? items : [];
@@ -613,7 +632,8 @@ function sanitizeLogItems(items) {
         duration: MATCH_DURATIONS.includes(duration) ? duration : MATCH_DEFAULT_DURATION,
         phase,
         t1Start, t1End, t2Start, t2End,
-        lineup: (Array.isArray(raw.lineup) ? raw.lineup : []).slice(0, 30).map(n => txt(n, 40)).filter(Boolean)
+        lineup: (Array.isArray(raw.lineup) ? raw.lineup : []).slice(0, 30).map(n => txt(n, 40)).filter(Boolean),
+        field: sanitizeLiveField(raw.field)
       };
     } else if (raw.type === 'event' && MATCH_EVENT_KINDS.includes(raw.kind) && events.length < MAX_LOG_EVENTS) {
       events.push({
@@ -642,7 +662,7 @@ function sanitizeLogItems(items) {
     }
   });
   if (!meta) {
-    meta = { id: 'meta', type: 'meta', duration: MATCH_DEFAULT_DURATION, phase: 'idle', t1Start: null, t1End: null, t2Start: null, t2End: null, lineup: [] };
+    meta = { id: 'meta', type: 'meta', duration: MATCH_DEFAULT_DURATION, phase: 'idle', t1Start: null, t1End: null, t2Start: null, t2End: null, lineup: [], field: {} };
   }
   return [meta, ...events, ...subs];
 }
@@ -820,26 +840,56 @@ function renderAll() {
   renderEntrenamiento();
   if (typeof renderTactica === 'function') renderTactica();
   if (typeof renderSimulacion === 'function') renderSimulacion();
+  if (typeof renderPartido === 'function') renderPartido();
 }
 
 // ==================================================================
-// Tabs
+// Tabs (dos niveles: grupo y solapa dentro del grupo)
 // ==================================================================
+// Agrupadas por el momento en que se usan: Equipo (conocer y desarrollar a las jugadoras), Planificar (lo de
+// antes del partido) y Partido (durante y después). Cada solapa sigue siendo un panel independiente.
+const TAB_GROUPS = {
+  equipo: ['panel-evaluador', 'panel-jugadora', 'panel-entrenamiento'],
+  planificar: ['panel-formacion', 'panel-tactica', 'panel-simulacion'],
+  partido: ['panel-partido']
+};
+// Al volver a un grupo se abre la última solapa que se estaba usando en él.
+const lastTabOfGroup = { equipo: 'panel-evaluador', planificar: 'panel-formacion', partido: 'panel-partido' };
+
+function showTab(panelId) {
+  const group = Object.keys(TAB_GROUPS).find(g => TAB_GROUPS[g].includes(panelId));
+  if (!group || !document.getElementById(panelId)) return;
+  lastTabOfGroup[group] = panelId;
+
+  document.querySelectorAll('#groupTabs .tab-btn').forEach(b => b.classList.toggle('active', b.dataset.group === group));
+  document.querySelectorAll('#subTabs .subtab-btn').forEach(b => {
+    b.hidden = b.dataset.group !== group;
+    b.classList.toggle('active', b.dataset.tab === panelId);
+  });
+  // Un grupo con una sola solapa no necesita la segunda fila.
+  document.getElementById('subTabs').hidden = TAB_GROUPS[group].length < 2;
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === panelId));
+
+  if (panelId === 'panel-formacion') renderFormacion();
+  if (panelId === 'panel-jugadora') renderDashboard();
+  if (panelId === 'panel-entrenamiento') renderEntrenamiento();
+  if (panelId === 'panel-tactica' && typeof renderTactica === 'function') renderTactica();
+  if (panelId === 'panel-simulacion' && typeof renderSimulacion === 'function') renderSimulacion();
+  if (panelId === 'panel-partido' && typeof renderPartido === 'function') renderPartido();
+
+  // En pantallas chicas las barras se desplazan: dejar visible la solapa activa.
+  const groupBtn = document.querySelector(`#groupTabs .tab-btn[data-group="${group}"]`);
+  const subBtn = document.querySelector(`#subTabs .subtab-btn[data-tab="${panelId}"]`);
+  if (groupBtn) groupBtn.scrollIntoView({ inline: 'center', block: 'nearest' });
+  if (subBtn && !subBtn.closest('[hidden]')) subBtn.scrollIntoView({ inline: 'center', block: 'nearest' });
+}
+
 function setupTabs() {
-  document.querySelectorAll('.tab-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-      btn.classList.add('active');
-      document.getElementById(btn.dataset.tab).classList.add('active');
-      if (btn.dataset.tab === 'panel-formacion') renderFormacion();
-      if (btn.dataset.tab === 'panel-jugadora') renderDashboard();
-      if (btn.dataset.tab === 'panel-entrenamiento') renderEntrenamiento();
-      if (btn.dataset.tab === 'panel-tactica' && typeof renderTactica === 'function') renderTactica();
-      if (btn.dataset.tab === 'panel-simulacion' && typeof renderSimulacion === 'function') renderSimulacion();
-      // Con 5 solapas la barra se desplaza en pantallas chicas: dejar visible la activa.
-      btn.scrollIntoView({ inline: 'center', block: 'nearest' });
-    });
+  document.querySelectorAll('#groupTabs .tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => showTab(lastTabOfGroup[btn.dataset.group]));
+  });
+  document.querySelectorAll('#subTabs .subtab-btn').forEach(btn => {
+    btn.addEventListener('click', () => showTab(btn.dataset.tab));
   });
 }
 
@@ -1527,9 +1577,6 @@ function renderFormacion() {
   Object.entries(placements).forEach(([name, pos]) => {
     field.appendChild(createFieldToken(name, pos.x, pos.y));
   });
-
-  // La barra "En vivo" depende del partido y de quiénes están en la cancha.
-  if (typeof renderPartido === 'function') renderPartido();
 }
 
 // Chip de jugadora reutilizado en "Disponibles" y en "Alternativas"
