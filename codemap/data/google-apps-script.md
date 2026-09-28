@@ -13,18 +13,25 @@ completa Partido → Plan → forma táctica → placements que usa
 ```mermaid
 flowchart TD
     GET["Request GET (Web App)"] --> doGet
-    doGet --> readPlayers_
-    doGet --> attachHistory_
-    doGet --> readMatches_
-    doGet --> readMeta_["readMeta_('activeMatch')"]
+    doGet --> autenticar_["autenticar_(rol, nombre, clave)"]
+    autenticar_ --> decidirAcceso_
+    autenticar_ -->|"rechazado: errorAcceso_, no se lee ninguna hoja"| jsonResponse_
+    doGet -->|"con accion: solo el DT"| gestionarAccesos_
+    doGet --> leerEstado_
+    leerEstado_ --> readPlayers_
+    leerEstado_ --> attachHistory_
+    leerEstado_ --> readMatches_
+    leerEstado_ --> readMeta_["readMeta_('activeMatch')"]
+    leerEstado_ --> readTrainingLogs_
+    leerEstado_ --> readTactics_
+    leerEstado_ --> readSimulations_
+    leerEstado_ --> readMatchLogs_
+    doGet --> filtrarEstadoParaRol_
     doGet --> jsonResponse_
 
-    doGet --> readTrainingLogs_
-    doGet --> readTactics_
-    doGet --> readSimulations_
-    doGet --> readMatchLogs_
     POST["Request POST (Web App)"] --> doPost
-    doPost --> writePlayers_
+    doPost --> autenticar_
+    doPost -->|"solo dt y soporte"| writePlayers_
     doPost --> writeHistory_
     doPost --> writeMatches_
     doPost --> writeTrainingLogs_
@@ -67,6 +74,12 @@ flowchart TD
 ```
 
 ## Esquema de hojas
+
+- **Accesos** — `Rol, Nombre, Clave, Activo`. Una fila por persona con acceso que no sea el DT: `jugadora`
+  (la clave es su PIN de 4 dígitos) o `soporte` (una clave larga). `Activo` es `si` o `no`; **solo `si` habilita**,
+  así una fila cargada a mano sin esa columna no da acceso. Se crea sola y la maneja el DT desde la app. La clave del
+  DT no está en esta hoja sino en las Propiedades del script (`DT_KEY`). **Quien pueda editar la Sheet ve estas
+  claves.** Las columnas son texto plano para que un PIN como `0123` no pierda el cero.
 
 - **Jugadoras** — `Nombre, Apodo, Edad, Altura, PieDominante,
   PosPrincipal, PosSecundaria, [11 atributos]`. Una fila por jugadora,
@@ -133,9 +146,12 @@ redeployar, solo las 5 keys en sí (`tecnica`, `tactica`, `presion`,
 
 ## `doGet(e)` / `doPost(e)`
 
-`doGet` arma `{ players, matches, trainingLogs, tactics, simulations,
-matchLogs, activeMatch }` combinando las nueve hojas — `attachHistory_` le agrega el array
-`.history` a cada jugadora de `players` antes de responder. `doPost`
+Ninguna de las dos hace nada sin credenciales válidas (ver "Acceso y permisos" más abajo). `doGet` recibe `rol`, `nombre`
+y `clave` como parámetros de la URL; `doPost` las recibe en `body.auth`. `doGet` arma `{ players, matches,
+trainingLogs, tactics, simulations, matchLogs, activeMatch }` con `leerEstado_`, combinando las hojas —
+`attachHistory_` le agrega el array `.history` a cada jugadora de `players` antes de responder—, lo pasa por
+`filtrarEstadoParaRol_` y le agrega `protegido: true`, `rol` y `nombre`. Sin credenciales devuelve
+`{ protegido: true, error: 'auth' }` (así responde a una versión vieja de la app: no recibe datos). `doPost`
 recibe ese mismo shape completo (mandado como `text/plain` desde el
 cliente para evitar el preflight de CORS — ver [[CORS / preflight]] en
 el Glosario) y reescribe **todo** — no hace merge ni upsert parcial:
@@ -145,6 +161,38 @@ Entrenamientos, Tacticas, Simulaciones; Meta solo guarda `activeMatch`). La
 única excepción son `tactics` y `simulations`: `doPost` las escribe **solo
 si** el cuerpo trae un array con ese nombre, así una versión vieja de la app (que no las conoce) no
 borra las que ya están en la Sheet.
+
+## Acceso y permisos
+
+La lógica de decisión está separada de los servicios de Google, para poder probarla en Node con el mismo archivo.
+
+- **`decidirAcceso_(creds, ctx)`** (pura): recibe `{ rol, nombre, clave }` y un contexto (`dtKey`, las filas de
+  `Accesos`, los contadores de fallos y la hora) y devuelve `{ ok, rol, nombre }` o `{ ok: false, error }` con
+  `auth`, `bloqueado`, `sin_clave_dt` u `ocupado`. El DT entra con `DT_KEY`; si el script no la tiene configurada **no
+  deja entrar a nadie** (falla cerrado). El soporte y las jugadoras entran por nombre + clave; los nombres se comparan sin
+  mayúsculas ni tildes y los errores de nombre y de clave son iguales. Las comparaciones no cortan en la primera letra
+  distinta (`igualesSeguras_`).
+- **Bloqueo por intentos, solo para PIN de jugadora** (tiene 10.000 combinaciones): 5 fallos por nombre en 30 minutos
+  bloquean ese nombre 30 minutos, incluso con el PIN correcto. Los contadores viven en las Propiedades del script
+  (`fallo_<nombre>`), solo para nombres que existen (si no, se podría llenar el almacenamiento con nombres inventados).
+  A la clave del DT y del soporte **no** se les pone bloqueo, para que un desconocido no pueda dejar afuera al DT
+  errando a propósito. Las jugadoras entran de a una (`LockService`): si no, se podrían mandar muchos intentos a la vez
+  antes de que el bloqueo los cuente.
+- **`filtrarEstadoParaRol_(estado, sesion)`** (pura): el DT y el soporte reciben todo. La jugadora recibe sus datos
+  completos; de sus compañeras solo nombre, apodo, posiciones y atributos actuales (sin edad, altura, pie ni
+  historial); los partidos con sus planes; las tácticas guardadas; y los registros de partidos **terminados** sin las
+  notas del DT ni los cambios que quedaron por hacer. Nunca recibe entrenamientos, simulaciones ni registros de
+  partidos en juego. Agrega `yo` (su nombre tal como está en la plantilla).
+- **`gestionarAccesos_`**: solo para el DT, por GET con `accion` = `accesos_listar`, `acceso_generar` (crea o
+  regenera el PIN o la clave, y desbloquea), `acceso_activar` y `acceso_quitar`. Devuelve siempre la lista al día. La
+  clave la genera el script (`generarClave_`, a partir de `Utilities.getUuid()`): 4 dígitos para jugadoras y 16
+  caracteres en grupos de 4 para el soporte.
+- **`autenticar_`**, **`cargarContexto_`**, **`recordarFallos_`**, **`readAccesos_`**, **`writeAccesos_`**: los
+  pegamentos con `PropertiesService`, `LockService` y la hoja `Accesos`.
+
+**Para instalarlo**: agregar la propiedad `DT_KEY` en Configuración del proyecto → Propiedades del script y publicar una
+versión nueva de la implementación (la URL no cambia). La lectura se hace por GET a propósito: un POST de la app nueva
+contra un script viejo sería leído como un estado vacío y borraría la Sheet.
 
 ## Tácticas y Simulaciones: `readDrawings_(sheet)` / `writeDrawings_(sheet, list)` / `asText_(value)`
 
@@ -240,6 +288,9 @@ sola global.
 |---|---|
 | `SpreadsheetApp` (API de Google Apps Script) | Leer/escribir las hojas del spreadsheet |
 | `ContentService` (API de Google Apps Script) | Construir la respuesta HTTP en JSON |
+| `PropertiesService` (API de Google Apps Script) | Guardar `DT_KEY` y los contadores de intentos fallidos |
+| `LockService` (API de Google Apps Script) | Que las jugadoras entren de a una (para que el bloqueo por intentos cuente bien) |
+| `Utilities` (API de Google Apps Script) | Generar PIN y claves al azar (`getUuid`) |
 | [js/sheets-integration.js](../js/sheets-integration.md) | Único cliente HTTP que llama a este script |
 
 Ver también [GLOSSARY.md](../GLOSSARY.md).
