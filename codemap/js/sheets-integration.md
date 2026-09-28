@@ -7,8 +7,9 @@ justos, más un indicador visual de estado en el header.
 
 Cada pedido lleva las credenciales de quien entró (`Acceso.credenciales()`).
 El Apps Script decide qué devuelve y quién puede escribir; acá solo se lee su
-respuesta para mostrarla en el indicador y para cerrar la sesión si la clave
-ya no vale.
+respuesta para mostrarla en el indicador. Un rechazo de la clave **no cierra la sesión**: se reintenta una vez y, si
+persiste, se muestra un cartel (ver [acceso.md](acceso.md)). Cada pedido queda anotado con lo que tardó
+(`Acceso.registrar`).
 
 ## Flujo interno
 
@@ -33,7 +34,11 @@ flowchart TD
     pushNow -->|"fetch POST ok"| setStatusSynced
     pushNow -->|"el script contesta un error"| rechazado
     pushNow -->|"fetch POST falla"| setStatusOffline
-    rechazado -->|"auth"| sesionInvalida["Acceso.sesionInvalida()"]
+    hydrate -->|"error auth"| Reintento["espera 1,5 s y repite el pedido una vez"]
+    pushNow -->|"error auth"| Reintento
+    Reintento -->|"sigue rechazando"| rechazado
+    Reintento -->|"anduvo"| setStatusSynced
+    rechazado -->|"auth"| claveRechazada["Acceso.claveRechazada(): cartel, sin cerrar la sesión"]
     rechazado -->|"bloqueado / sin_clave_dt / permiso"| setStatusDenied["setStatus('denied')"]
 ```
 
@@ -67,9 +72,10 @@ entrada y devuelve `{ estado, protegido, minutos }`, con estado `ok`, `auth`,
 
 Se llama una sola vez al arrancar la app. Sin sesión no pide nada. Con sesión,
 pide el estado al script (que dispara `doGet`) y devuelve el JSON que ese rol
-puede ver; si el script contesta con un error, lo pasa a `rechazado`. Si falla
-la conexión o no está configurado, devuelve `null` y `app.js` sigue usando lo
-que haya en `localStorage`.
+puede ver. Si el script contesta `auth`, espera 1,5 segundos y repite el pedido una vez (un rechazo aislado no debe sacar a
+nadie de la app); si el segundo también es un error, lo pasa a `rechazado`. Anota en el historial de conexión cuánto tardó y
+cómo salió. Si falla la conexión o no está configurado, devuelve `null` y `app.js` sigue usando lo que haya en
+`localStorage`.
 
 ## `scheduleSync(state)` / `pushNow(state)`
 
@@ -80,8 +86,8 @@ el rol no edita (jugadora), no hace nada: nunca se manda una escritura.** Usa un
 `Content-Type: text/plain` para evitar el preflight de CORS que Apps Script no
 maneja (ver [[CORS / preflight]] en el Glosario). **Ahora lee la respuesta**
 (antes la ignoraba y siempre decía "Sincronizado"): si el script rechazó el
-guardado, el indicador lo dice. Si la respuesta no se puede leer, muestra
-"Enviado (sin confirmación)".
+guardado, el indicador lo dice; y con `auth` reintenta una vez igual que `hydrate` (guardar es un pedido completo, no una
+suma, así que repetirlo es seguro). Si la respuesta no se puede leer, muestra "Enviado (sin confirmación)".
 
 ## `gestionarAccesos(params)`
 
@@ -92,8 +98,8 @@ Solo para el DT (con otro rol devuelve `{ error: 'permiso' }`). Hace un `GET` co
 
 ## `rechazado(resp)`
 
-Traduce un error del script al indicador: `auth` cierra la sesión (la clave ya
-no vale); `bloqueado` avisa cuántos minutos esperar; `sin_clave_dt` avisa que
+Traduce un error del script al indicador: `auth` muestra el cartel de clave rechazada (`Acceso.claveRechazada()`) sin cerrar
+la sesión; `bloqueado` avisa cuántos minutos esperar; `sin_clave_dt` avisa que
 al script le falta `DT_KEY`; `ocupado` se trata como falta de conexión; el
 resto (`permiso`, `formato`...) queda como "Sin permiso para guardar".
 
