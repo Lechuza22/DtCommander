@@ -161,6 +161,30 @@
 
     <!-- ===== FORMACIÓN ===== -->
     <section id="panel-formacion" class="tab-panel">
+      <!-- Barra "En vivo": reloj, marcador y jugadas de un toque. Queda fija arriba mientras se mira la cancha. -->
+      <div class="live-bar" id="liveBar">
+        <div class="live-top">
+          <div class="live-clock-box">
+            <span id="liveClock" class="live-clock">00:00</span>
+            <span id="livePhase" class="live-phase">Sin empezar</span>
+          </div>
+          <div class="live-score" title="Marcador">
+            <span class="live-team">Nosotras</span>
+            <span id="liveScore" class="live-score-num">0 - 0</span>
+            <span id="liveRival" class="live-team">Rival</span>
+          </div>
+          <button type="button" id="livePhaseBtn" class="btn live-main-btn">Iniciar 1.er tiempo</button>
+        </div>
+        <div class="live-events" id="liveEventButtons">
+          <button type="button" class="live-ev-btn live-ev-goal" data-kind="goal">Gol<br>nuestro</button>
+          <button type="button" class="live-ev-btn live-ev-goalRival" data-kind="goalRival">Gol<br>rival</button>
+          <button type="button" class="live-ev-btn live-ev-chance" data-kind="chance">Jugada<br>de gol</button>
+          <button type="button" class="live-ev-btn live-ev-danger" data-kind="danger">Jugada<br>peligrosa</button>
+        </div>
+        <div id="liveToast" class="live-toast" role="status" hidden></div>
+        <div id="liveSubChips" class="live-chips" hidden></div>
+      </div>
+
       <div class="card">
         <div class="roster-controls">
           <select id="matchSelect"></select>
@@ -215,6 +239,37 @@
             <path d="M122,390 L122,398 L178,398 L178,390 Z" class="field-goal"></path>
           </svg>
         </div>
+      </div>
+
+      <!-- Detalle del partido en vivo: duración, cambios (por hacer / hechos) y jugadas anotadas. -->
+      <div class="card" id="liveDetails">
+        <h2>Partido en vivo</h2>
+        <div class="live-config">
+          <label>Duración
+            <select id="liveDuration"></select>
+          </label>
+          <span id="liveAdjust" class="live-adjust" hidden>
+            Ajustar reloj
+            <button type="button" class="btn btn-secondary btn-small" data-nudge="-1">-1 min</button>
+            <button type="button" class="btn btn-secondary btn-small" data-nudge="1">+1 min</button>
+          </span>
+          <button type="button" id="liveResetBtn" class="btn btn-danger btn-small">Borrar registro</button>
+        </div>
+        <p class="hint">Cada tiempo dura lo que elijas (por ejemplo, 25 son dos tiempos de 25). El reloj sigue corriendo aunque se bloquee el celular o cambies de solapa. <span id="liveWakeHint"></span></p>
+        <p id="liveError" class="form-error"></p>
+
+        <h3>Cambios</h3>
+        <button type="button" id="liveAddSubBtn" class="btn">+ Cambio</button>
+        <div id="liveSubForm" class="add-player-form" hidden>
+          <label>Sale <select id="liveSubOut"></select></label>
+          <label>Entra <select id="liveSubIn"></select></label>
+          <button type="button" id="liveSubConfirm" class="btn">Agregar</button>
+          <button type="button" id="liveSubCancel" class="btn btn-secondary">Cancelar</button>
+        </div>
+        <div id="liveSubList" class="live-list"></div>
+
+        <h3>Jugadas del partido</h3>
+        <div id="liveEventList" class="live-list"></div>
       </div>
     </section>
 
@@ -463,5 +518,6 @@
   <script src="js/tactica.js"></script>
   <script src="js/simulacion-media.js"></script>
   <script src="js/simulacion.js"></script>
+  <script src="js/partido.js"></script>
 </body>
 </html>
