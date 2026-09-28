@@ -21,6 +21,9 @@ sea fácil ubicar qué tocar.
 - **Layout general**: `header`, `.tabs`, `.container`, `.card` — la
   estructura de tarjetas que envuelve cada bloque de Evaluador y
   Formación.
+- **Carteles de estado**: `.candado-aviso` (amarillo, el del candado sin activar), `.clave-aviso` (el mismo estilo, con el
+  texto y el botón "Entrar de nuevo" en una fila que se parte en celulares), `.cargando-aviso` (azul claro, centrado) y
+  `.conexion-resumen` (el párrafo de la pestaña Conexión).
 - **Encabezado**: `header` es un `flex` centrado (título, `.rol-chip` y punto de estado) con `padding` de 84 px a los lados
   para dejar lugar, y `.header-acciones` (con el engranaje y el ⏻) va `position: absolute` en la esquina superior derecha.
   En pantallas de hasta 640 px el título se achica y el padding izquierdo baja a 12 px; en las de hasta 360 px se achica
