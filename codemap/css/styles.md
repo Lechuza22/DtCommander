@@ -21,10 +21,12 @@ sea fácil ubicar qué tocar.
 - **Layout general**: `header`, `.tabs`, `.container`, `.card` — la
   estructura de tarjetas que envuelve cada bloque de Evaluador y
   Formación.
-- **Login**: `.login-gate` (overlay `position: fixed` a pantalla
-  completa que tapa todo), `.login-card` (el formulario en sí),
-  `.btn-logout` (botón ⏻ en el header) — ver
-  [js/auth.md](../js/auth.md).
+- **Entrada y rol**: `.login-gate` (overlay `position: fixed` a pantalla
+  completa que tapa todo), `.login-card` (el formulario en sí, con un
+  `select` y los `input`), `.btn-logout` (botón ⏻ en el header; con
+  `.armado` se ensancha y se pone rojo al primer toque), `.rol-chip` (quién
+  entró) y `.candado-aviso` (el cartel amarillo del DT) — ver
+  [js/acceso.md](../js/acceso.md).
 - **Desplegables de guardados**: `.roster-controls select` y `.formation-controls select` llevan `min-width: 0; max-width: 100%`. Sin eso, un nombre largo (por ejemplo una simulación "Transición: Ataque desde arco (8 fases) — 21/09/2026") estiraba el `<select>` más allá del ancho de la pantalla y la página se desplazaba de costado en el celular (bug real que hubo).
 - **Evaluador**: `.roster-controls`, `.position-controls` (fila flex con
   wrap para los seis campos de "Datos de la jugadora": apodo, edad,
@@ -32,7 +34,8 @@ sea fácil ubicar qué tocar.
   escritorio y se acomodan solos en celular),
   `.slider-group` (grilla de 3 columnas: label, input range, valor),
   `.attrs-chart-layout` (grilla de 2 columnas: atributos al lado del
-  radar chart, colapsa a 1 columna en mobile).
+  radar chart, colapsa a 1 columna en mobile; esa columna es `minmax(0, 1fr)` y no `1fr`, porque con `1fr` el contenido
+  de los sliders la ensanchaba y la página se desplazaba de costado en celulares de 375 px).
 - **Formación**: `.plan-tabs` / `.plan-tab-btn` (solapas Plan A/B/C),
   `.field-layout` (grilla de 2 columnas: disponibles 240px + cancha),
   `.player-chip` (jugadora sin ubicar, reutilizado también en
@@ -137,8 +140,8 @@ sea fácil ubicar qué tocar.
   `.attrs-grid` / `.attr-row` / `.attr-row-label` / `.attr-row-value`
   (la lista vertical de atributos estilo FIFA — borde izquierdo y
   número coloreados por `colorForAttrValue`).
-- **`.sync-status`**: los cuatro colores de estado de sincronización
-  (`sync-local`, `sync-syncing`, `sync-synced`, `sync-offline`), leídos
+- **`.sync-status`**: los cinco colores de estado de sincronización
+  (`sync-local`, `sync-syncing`, `sync-synced`, `sync-offline` y `sync-denied`, rojo fuerte cuando el script rechazó el pedido), leídos
   por [js/sheets-integration.js](../js/sheets-integration.md).
 - **`@media (max-width: 640px)`**: ajustes responsive — la grilla de
   Formación pasa a una columna y la lista de disponibles se vuelve
