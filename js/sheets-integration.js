@@ -15,6 +15,8 @@ const SHEET_API_URL = 'https://script.google.com/macros/s/AKfycby2J1OBwdPhgTC07P
 (function () {
   const STATUS_EL_ID = 'syncStatus';
   let syncTimer = null;
+  const REINTENTO_MS = 1500;
+  const esperar = ms => new Promise(r => setTimeout(r, ms));
 
   function isConfigured() {
     return typeof SHEET_API_URL === 'string' && SHEET_API_URL.indexOf('https://script.google.com/') === 0;
@@ -53,8 +55,9 @@ const SHEET_API_URL = 'https://script.google.com/macros/s/AKfycby2J1OBwdPhgTC07P
     const acceso = window.Acceso;
     switch (resp.error) {
       case 'auth':
-        setStatus('denied', 'Tu clave ya no es válida.');
-        if (acceso) acceso.sesionInvalida();
+        // No se cierra la sesión sola: se sigue trabajando con lo guardado en el dispositivo y se muestra un cartel.
+        setStatus('denied', 'El script no aceptó la clave guardada en este dispositivo. Lo que hagas se guarda acá pero no llega a la Sheet.');
+        if (acceso) acceso.claveRechazada();
         break;
       case 'bloqueado':
         setStatus('denied', `Demasiados intentos fallidos. Probá de nuevo en ${resp.minutos || 30} minutos.`);
@@ -79,13 +82,20 @@ const SHEET_API_URL = 'https://script.google.com/macros/s/AKfycby2J1OBwdPhgTC07P
       return null;
     }
     setStatus('syncing', 'Cargando datos desde Google Sheets…');
+    const t0 = Date.now();
     try {
-      const remote = await leer({ rol: creds.rol, nombre: creds.nombre, clave: creds.clave });
-      if (remote && remote.error) { rechazado(remote); return null; }
+      let remote = await leer({ rol: creds.rol, nombre: creds.nombre, clave: creds.clave });
+      let reintento = false;
+      // Un "clave incorrecta" aislado no debe sacar a nadie de la app: se reintenta una vez antes de darlo por cierto.
+      if (remote && remote.error === 'auth') { reintento = true; await esperar(REINTENTO_MS); remote = await leer({ rol: creds.rol, nombre: creds.nombre, clave: creds.clave }); }
+      if (remote && remote.error) { acceso.registrar('lectura', Date.now() - t0, remote.error === 'auth' ? 'clave rechazada' : remote.error, reintento ? 'también al reintentar' : ''); rechazado(remote); return null; }
+      acceso.registrar('lectura', Date.now() - t0, 'ok', reintento ? 'el primer intento fue rechazado y el segundo anduvo' : '');
+      acceso.claveAceptada();
       acceso.marcarServidor(!!(remote && remote.protegido));
       setStatus('synced', 'Sincronizado con Google Sheets');
       return remote;
     } catch (err) {
+      acceso.registrar('lectura', Date.now() - t0, 'sin conexión');
       setStatus('offline', 'No se pudo conectar con Google Sheets. Usando datos guardados en este navegador.');
       return null;
     }
@@ -107,7 +117,8 @@ const SHEET_API_URL = 'https://script.google.com/macros/s/AKfycby2J1OBwdPhgTC07P
     const acceso = window.Acceso;
     const creds = acceso && acceso.credenciales();
     if (!creds || !acceso.puedeEditar()) return;
-    try {
+    const t0 = Date.now();
+    const enviar = async () => {
       const res = await fetch(SHEET_API_URL, {
         method: 'POST',
         // text/plain evita el preflight CORS que Apps Script no maneja bien con application/json
@@ -115,11 +126,19 @@ const SHEET_API_URL = 'https://script.google.com/macros/s/AKfycby2J1OBwdPhgTC07P
         body: JSON.stringify(Object.assign({ auth: creds }, state))
       });
       // Antes la respuesta se ignoraba y siempre decía "Sincronizado": ahora se lee para enterarse si el script rechazó el guardado.
-      let resp = null;
-      try { resp = await res.json(); } catch (err) { resp = null; }
-      if (resp && resp.error) { rechazado(resp); return; }
+      try { return await res.json(); } catch (err) { return null; }
+    };
+    try {
+      let resp = await enviar();
+      let reintento = false;
+      // Guardar es un pedido completo (no una suma), así que repetirlo es seguro.
+      if (resp && resp.error === 'auth') { reintento = true; await esperar(REINTENTO_MS); resp = await enviar(); }
+      if (resp && resp.error) { acceso.registrar('guardado', Date.now() - t0, resp.error === 'auth' ? 'clave rechazada' : resp.error, reintento ? 'también al reintentar' : ''); rechazado(resp); return; }
+      acceso.registrar('guardado', Date.now() - t0, resp ? 'ok' : 'sin confirmación', reintento ? 'el primer intento fue rechazado y el segundo anduvo' : '');
+      if (resp) acceso.claveAceptada();
       setStatus('synced', resp ? 'Sincronizado con Google Sheets' : 'Enviado a Google Sheets (sin confirmación)');
     } catch (err) {
+      acceso.registrar('guardado', Date.now() - t0, 'sin conexión');
       setStatus('offline', 'No se pudo sincronizar con Google Sheets. Guardado local; se reintenta en el próximo cambio.');
     }
   }
