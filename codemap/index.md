@@ -64,7 +64,7 @@ flowchart TD
 
     PanelPartido["#panel-partido"] --> LiveBar["#liveBar (fija arriba): #liveClock / #livePhase / #liveScore / #livePhaseBtn / #liveEventButtons / #liveToast / #liveSubChips"]
     PanelPartido --> LiveSetup["#liveSetup (plegable): #liveMatchSelect / #liveAddMatchForm / #liveSourceKind / #liveSourcePlan / #liveSourceFormation / #liveSourceTactic / #liveBringBtn"]
-    PanelPartido --> LiveField["#liveAvailable (banco) / #matchField (svg, lo dibuja el JS)"]
+    PanelPartido --> LiveField["#liveAvailable (banco) / #liveSuggestions (perfil y cambios sugeridos) / #matchField (svg, lo dibuja el JS)"]
     PanelPartido --> LiveDetails["#liveDetails (debajo de la cancha): #liveDuration / #liveAdjust / #liveResetBtn / #liveSubForm / #liveSubList / #liveEventList"]
 ```
 
