@@ -1,7 +1,7 @@
 # index.html
 
 El único documento HTML de la app: define la estructura (header, seis
-pestañas, formularios) que [js/app.js](js/app.md) rellena y manipula. No
+pestañas, formularios, y la barra "En vivo" de Formación) que [js/app.js](js/app.md) rellena y manipula. No
 tiene lógica propia — es puro esqueleto con IDs y clases que el
 JavaScript busca por `document.getElementById` / `querySelectorAll`.
 
@@ -34,7 +34,9 @@ flowchart TD
     PanelJugadora --> DashTrend["#dashboardTrendChart (canvas, dentro de .chart-wrap)"]
     PanelJugadora --> DashTimeline["#dashboardTimeline"]
 
-    PanelFormacion["#panel-formacion"] --> MatchControls["#matchSelect / #addMatchForm / #removeMatchBtn"]
+    PanelFormacion["#panel-formacion"] --> LiveBar["#liveBar (fija arriba): #liveClock / #livePhase / #liveScore / #livePhaseBtn / #liveEventButtons / #liveToast / #liveSubChips"]
+    PanelFormacion --> LiveDetails["#liveDetails (debajo de la cancha): #liveDuration / #liveAdjust / #liveResetBtn / #liveSubForm / #liveSubList / #liveEventList"]
+    PanelFormacion --> MatchControls["#matchSelect / #addMatchForm / #removeMatchBtn"]
     PanelFormacion --> PlanTabs["#planTabs (Plan A/B/C)"]
     PanelFormacion --> FormationSelect["#formationSelect"]
     PanelFormacion --> ResetBtn["#resetFormationBtn"]
@@ -114,15 +116,22 @@ flowchart TD
   `[hidden] { display: none !important; }` cerca del principio — sin
   ella, los formularios de arriba quedaban siempre visibles aunque el
   atributo `hidden` estuviera bien puesto (bug real que hubo en la app).
-- Carga siete `<script>` al final del `<body>`, en este orden:
+- Carga ocho `<script>` al final del `<body>`, en este orden:
   `auth.js`, Chart.js (CDN), `sheets-integration.js`, `app.js`, `tactica.js`,
-  `simulacion-media.js`, `simulacion.js`.
+  `simulacion-media.js`, `simulacion.js`, `partido.js`.
   `auth.js` va primero porque decide si el resto siquiera se ve; el
   resto del orden importa porque `app.js` usa `window.SheetsSync` y
   `Chart` al arrancar. `tactica.js` va después de `app.js` porque usa sus
   funciones y su estado, y `app.js` lo invoca con un `typeof` de por medio. Lo mismo con
   `simulacion.js`, que además necesita `simulacion-media.js` ya cargado
   (usa `window.SimMedia` apenas arranca).
+- **`#liveBar`** (arriba de todo en Formación) y **`#liveDetails`** (debajo de
+  la cancha) son el partido en vivo de [js/partido.js](js/partido.md). La barra
+  es `position: sticky` para verla mientras se mira la cancha: reloj, marcador,
+  el botón que avanza la fase, cuatro botones de jugada de un toque y, si hay
+  cambios por hacer, un chip por cada uno con su botón "Hecho". Todo el
+  contenido lo dibuja el JS; el HTML solo define los contenedores. El detalle
+  tiene la duración del partido, los cambios y la lista editable de jugadas.
 - **`#tacticField`** es un `<svg>` vacío (solo el `viewBox`): la cancha, las
   jugadoras y los dibujos los crea [js/tactica.js](js/tactica.md). La
   barra de herramientas (`.tactic-tools-card`) queda fija arriba en
@@ -156,5 +165,6 @@ flowchart TD
 | [js/tactica.js](js/tactica.md) | Pestaña Táctica (tablero libre) |
 | [js/simulacion.js](js/simulacion.md) | Pestaña Simulación (jugada animada en fases) |
 | [js/simulacion-media.js](js/simulacion-media.md) | Dibujo (SVG y canvas) y grabación de video |
+| [js/partido.js](js/partido.md) | Barra "En vivo" de Formación: reloj, marcador, jugadas y cambios |
 
 Ver también [GLOSSARY.md](GLOSSARY.md).
