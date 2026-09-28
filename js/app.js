@@ -579,13 +579,16 @@ function mergeSimulations(localList, remoteList) {
 //        (Date.now); lineup = quiénes estaban en la cancha al arrancar el 1.er tiempo; field = la cancha del
 //        partido en este momento ({ nombre: { x, y } }): es una COPIA de la alineación que se trajo de
 //        Formación o de una táctica, y los cambios y movimientos del partido tocan solo esta copia
-//   { type: 'event', id, kind, half, sec, player, assist, note }  kind = goal | goalRival | chance | danger;
-//        half y sec = tiempo (1 o 2) y segundos transcurridos DENTRO de ese tiempo
+//   { type: 'event', id, kind, side, half, sec, player, assist, note }
+//        kind = goal | goalRival | chance | danger (ya dicen de qué lado son) o foul | freeKick | corner |
+//        throwIn | penalty (falta, tiro libre, córner, lateral y penal), que llevan side = for (a favor) |
+//        against (en contra); half y sec = tiempo (1 o 2) y segundos transcurridos DENTRO de ese tiempo
 //   { type: 'sub', id, out, in, status, half, sec }  status = pending (por hacer) | done (hecho, con su minuto)
 const MATCH_DURATIONS = [15, 20, 25, 30, 45];
 const MATCH_DEFAULT_DURATION = 25;
 const MATCH_PHASES = ['idle', 't1', 'ht', 't2', 'end'];
-const MATCH_EVENT_KINDS = ['goal', 'goalRival', 'chance', 'danger'];
+const MATCH_SIDE_KINDS = ['foul', 'freeKick', 'corner', 'throwIn', 'penalty'];
+const MATCH_EVENT_KINDS = ['goal', 'goalRival', 'chance', 'danger'].concat(MATCH_SIDE_KINDS);
 const MAX_LOG_EVENTS = 300;
 const MAX_LOG_SUBS = 60;
 
@@ -640,6 +643,7 @@ function sanitizeLogItems(items) {
         id: txt(raw.id || 'e' + idx, 40),
         type: 'event',
         kind: raw.kind,
+        side: MATCH_SIDE_KINDS.includes(raw.kind) ? (raw.side === 'against' ? 'against' : 'for') : '',
         half: Number(raw.half) === 2 ? 2 : 1,
         sec: secs(raw.sec),
         player: txt(raw.player, 40),
@@ -760,6 +764,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupEvaluador();
     setupFormacion();
     if (typeof setupPartido === 'function') setupPartido();
+    if (typeof setupJugados === 'function') setupJugados();
     setupDashboard();
     setupEntrenamiento();
     if (typeof setupTactica === 'function') setupTactica();
@@ -841,6 +846,7 @@ function renderAll() {
   if (typeof renderTactica === 'function') renderTactica();
   if (typeof renderSimulacion === 'function') renderSimulacion();
   if (typeof renderPartido === 'function') renderPartido();
+  if (typeof renderJugados === 'function') renderJugados();
 }
 
 // ==================================================================
@@ -851,7 +857,7 @@ function renderAll() {
 const TAB_GROUPS = {
   equipo: ['panel-evaluador', 'panel-jugadora', 'panel-entrenamiento'],
   planificar: ['panel-formacion', 'panel-tactica', 'panel-simulacion'],
-  partido: ['panel-partido']
+  partido: ['panel-partido', 'panel-jugados']
 };
 // Al volver a un grupo se abre la última solapa que se estaba usando en él.
 const lastTabOfGroup = { equipo: 'panel-evaluador', planificar: 'panel-formacion', partido: 'panel-partido' };
@@ -876,6 +882,7 @@ function showTab(panelId) {
   if (panelId === 'panel-tactica' && typeof renderTactica === 'function') renderTactica();
   if (panelId === 'panel-simulacion' && typeof renderSimulacion === 'function') renderSimulacion();
   if (panelId === 'panel-partido' && typeof renderPartido === 'function') renderPartido();
+  if (panelId === 'panel-jugados' && typeof renderJugados === 'function') renderJugados();
 
   // En pantallas chicas las barras se desplazan: dejar visible la solapa activa.
   const groupBtn = document.querySelector(`#groupTabs .tab-btn[data-group="${group}"]`);
@@ -1072,7 +1079,7 @@ function setupEvaluador() {
 function renderPlayerSelect() {
   const sel = document.getElementById('playerSelect');
   const names = Object.keys(state.players);
-  sel.innerHTML = names.map(n => `<option value="${n}">${n}</option>`).join('');
+  sel.innerHTML = names.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
   if (!currentPlayer || !state.players[currentPlayer]) currentPlayer = names[0] || null;
   if (currentPlayer) sel.value = currentPlayer;
 }
@@ -1210,7 +1217,7 @@ function renderDashboard() {
   const sel = document.getElementById('dashboardPlayerSelect');
   if (!sel) return; // todavía no se armó el HTML (no debería pasar, pero por las dudas)
   const names = Object.keys(state.players);
-  sel.innerHTML = names.map(n => `<option value="${n}">${n}</option>`).join('');
+  sel.innerHTML = names.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
   if (!currentPlayer || !state.players[currentPlayer]) currentPlayer = names[0] || null;
 
   const hasPlayer = !!currentPlayer;
@@ -1328,7 +1335,7 @@ function renderDashboardDiff(player, history) {
     </div>`;
   }).join('');
   container.innerHTML = `
-    <p class="hint">Comparado con "${last.label || 'sin etiqueta'}" (${formatDateDisplay(last.date)})</p>
+    <p class="hint">Comparado con "${escapeHtml(last.label || 'sin etiqueta')}" (${escapeHtml(formatDateDisplay(last.date))})</p>
     <div class="diff-grid">${rows}</div>`;
 }
 
@@ -1395,8 +1402,8 @@ function renderDashboardTimeline(history, player) {
   }).reverse().map(({ idx, avg, diffText, entry }) => `
     <div class="timeline-row">
       <div class="timeline-head">
-        <strong>${entry.label || 'Sin etiqueta'}</strong>
-        <span class="hint">${formatDateDisplay(entry.date)}</span>
+        <strong>${escapeHtml(entry.label || 'Sin etiqueta')}</strong>
+        <span class="hint">${escapeHtml(formatDateDisplay(entry.date))}</span>
         <span class="timeline-avg">Promedio: ${formatAttrValue(avg)} ${diffText}</span>
         <button type="button" class="btn btn-danger btn-small timeline-remove" data-index="${idx}">Eliminar</button>
       </div>
@@ -1510,7 +1517,7 @@ function renderMatchSelect() {
     const db = state.matches[b].date || '';
     return db.localeCompare(da); // más reciente primero
   });
-  sel.innerHTML = ids.map(id => `<option value="${id}">${matchLabel(state.matches[id])}</option>`).join('');
+  sel.innerHTML = ids.map(id => `<option value="${escapeHtml(id)}">${escapeHtml(matchLabel(state.matches[id]))}</option>`).join('');
   sel.value = state.activeMatch;
 }
 
@@ -1812,7 +1819,7 @@ function setupEntrenamiento() {
     rubricForm.hidden = !rubricForm.hidden;
     if (!rubricForm.hidden) {
       rubricPlayerSelect.innerHTML = '<option value="">Grupal (sin jugadora específica)</option>' +
-        Object.keys(state.players).map(n => `<option value="${n}">${n}</option>`).join('');
+        Object.keys(state.players).map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
       rubricDateInput.value = todayISO();
       rubricNotesInput.value = '';
       rubricCriteriaEl.querySelectorAll('select').forEach(sel => { sel.value = '3'; });
@@ -1921,12 +1928,12 @@ function renderTrainingLog() {
     return `
       <div class="timeline-row">
         <div class="timeline-head">
-          <strong>${entry.position}${entry.player ? ' — ' + entry.player : ' (grupal)'}</strong>
-          <span class="hint">${formatDateDisplay(entry.date)}</span>
+          <strong>${escapeHtml(entry.position)}${entry.player ? ' — ' + escapeHtml(entry.player) : ' (grupal)'}</strong>
+          <span class="hint">${escapeHtml(formatDateDisplay(entry.date))}</span>
           <button type="button" class="btn btn-danger btn-small training-log-remove" data-index="${idx}">Eliminar</button>
         </div>
-        <div class="hint">${scoresText}</div>
-        ${entry.notes ? `<p class="training-log-notes">${entry.notes}</p>` : ''}
+        <div class="hint">${escapeHtml(scoresText)}</div>
+        ${entry.notes ? `<p class="training-log-notes">${escapeHtml(entry.notes)}</p>` : ''}
       </div>`;
   }).join('');
 }
