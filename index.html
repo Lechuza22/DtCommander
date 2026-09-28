@@ -288,6 +288,17 @@
         <div class="card available-panel">
           <h2>Banco</h2>
           <div id="liveAvailable" class="available-list"></div>
+          <!-- Al pasar el mouse por una jugadora de la cancha (o al tocarla, que fija el panel) se ve su perfil y los cambios sugeridos del banco. -->
+          <div id="liveSuggestions" class="suggestions live-suggestions" hidden>
+            <div class="sugg-head">
+              <h3>Perfil de <span id="liveSuggestionsFor"></span></h3>
+              <button type="button" id="liveSuggestionsClose" class="btn btn-secondary btn-small" aria-label="Cerrar">✕</button>
+            </div>
+            <div class="suggestions-radar"><canvas id="liveSuggestionsRadar"></canvas></div>
+            <h3 id="liveSuggestionsTitle">Cambios sugeridos</h3>
+            <div id="liveSuggestionsList" class="live-sugg-list"></div>
+            <p id="liveSuggestionsHint" class="hint"></p>
+          </div>
         </div>
 
         <div class="card field-panel">
