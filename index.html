@@ -42,6 +42,7 @@
     <button class="subtab-btn" data-group="planificar" data-tab="panel-tactica" hidden>Táctica</button>
     <button class="subtab-btn" data-group="planificar" data-tab="panel-simulacion" hidden>Simulación</button>
     <button class="subtab-btn" data-group="partido" data-tab="panel-partido" hidden>En vivo</button>
+    <button class="subtab-btn" data-group="partido" data-tab="panel-jugados" hidden>Jugados</button>
   </nav>
 
   <main class="container">
@@ -248,6 +249,22 @@
           <button type="button" class="live-ev-btn live-ev-chance" data-kind="chance">Jugada<br>de gol</button>
           <button type="button" class="live-ev-btn live-ev-danger" data-kind="danger">Jugada<br>peligrosa</button>
         </div>
+        <!-- Falta, tiro libre, córner, lateral y penal: al tocar uno, esta misma fila pasa a preguntar "a favor / en contra" (sin agrandar la barra). -->
+        <div class="live-more">
+          <div class="live-more-buttons" id="liveMoreButtons">
+            <button type="button" class="live-more-btn" data-kind="foul">Falta</button>
+            <button type="button" class="live-more-btn" data-kind="freeKick">Tiro libre</button>
+            <button type="button" class="live-more-btn" data-kind="corner">Córner</button>
+            <button type="button" class="live-more-btn" data-kind="throwIn">Lateral</button>
+            <button type="button" class="live-more-btn" data-kind="penalty">Penal</button>
+          </div>
+          <div class="live-side" id="liveSidePicker" hidden>
+            <span id="liveSideLabel" class="live-side-label">Falta</span>
+            <button type="button" class="live-side-btn live-side-for" data-side="for">A favor</button>
+            <button type="button" class="live-side-btn live-side-against" data-side="against">En contra</button>
+            <button type="button" id="liveSideCancel" class="live-side-cancel" aria-label="Cancelar">✕</button>
+          </div>
+        </div>
         <div id="liveToast" class="live-toast" role="status" hidden></div>
         <div id="liveSubChips" class="live-chips" hidden></div>
       </div>
@@ -344,6 +361,36 @@
 
         <h3>Jugadas del partido</h3>
         <div id="liveEventList" class="live-list"></div>
+      </div>
+    </section>
+
+    <!-- ===== JUGADOS (los partidos ya anotados: resultado, resumen y línea de tiempo) ===== -->
+    <section id="panel-jugados" class="tab-panel">
+      <div class="card">
+        <h2>Partidos jugados</h2>
+        <p class="hint">Los partidos que anotaste en la solapa En vivo. Elegí uno para ver su resumen y su línea de tiempo.</p>
+        <div id="playedList" class="played-list"></div>
+      </div>
+
+      <div class="card" id="playedDetail" hidden>
+        <div class="played-head">
+          <div>
+            <h2 id="playedTitle"></h2>
+            <span id="playedMeta" class="hint"></span>
+          </div>
+          <div id="playedScore" class="played-score"></div>
+        </div>
+        <button type="button" id="playedOpenBtn" class="btn">Abrir en En vivo (para editarlo)</button>
+
+        <h3>Resumen</h3>
+        <table id="playedTable" class="played-table"></table>
+        <p id="playedScorers" class="hint"></p>
+
+        <h3>Línea de tiempo</h3>
+        <div id="playedTimeline" class="live-list"></div>
+
+        <h3>Alineación inicial</h3>
+        <p id="playedLineup" class="hint"></p>
       </div>
     </section>
 
@@ -593,5 +640,6 @@
   <script src="js/simulacion-media.js"></script>
   <script src="js/simulacion.js"></script>
   <script src="js/partido.js"></script>
+  <script src="js/jugados.js"></script>
 </body>
 </html>
