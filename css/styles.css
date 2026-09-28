@@ -740,7 +740,6 @@ input[type="range"] { width: 100%; }
 .played-item.result-win { border-left-color: var(--success); }
 .played-item.result-loss { border-left-color: var(--danger); }
 .played-item.result-draw { border-left-color: #8a94a3; }
-.played-item.result-live { border-left-color: #b7791f; }
 .played-what { flex: 1 1 auto; min-width: 0; }
 .played-what small { display: block; color: #667; font-size: 12px; }
 .played-item-score { font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; }
