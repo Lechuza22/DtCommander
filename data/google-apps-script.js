@@ -32,6 +32,7 @@ const SHEET_FORMACION = 'Formacion';
 const SHEET_ENTRENAMIENTOS = 'Entrenamientos';
 const SHEET_TACTICAS = 'Tacticas';
 const SHEET_SIMULACIONES = 'Simulaciones';
+const SHEET_PARTIDOS_VIVO = 'PartidosVivo';
 const SHEET_META = 'Meta';
 
 function doGet(e) {
@@ -41,8 +42,9 @@ function doGet(e) {
   const trainingLogs = readTrainingLogs_();
   const tactics = readTactics_();
   const simulations = readSimulations_();
+  const matchLogs = readMatchLogs_();
   const activeMatch = readMeta_('activeMatch') || '';
-  return jsonResponse_({ players, matches, trainingLogs, tactics, simulations, activeMatch });
+  return jsonResponse_({ players, matches, trainingLogs, tactics, simulations, matchLogs, activeMatch });
 }
 
 function doPost(e) {
@@ -55,6 +57,7 @@ function doPost(e) {
   // no debe borrar las tácticas que ya están en la Sheet.
   if (Array.isArray(body.tactics)) writeTactics_(body.tactics);
   if (Array.isArray(body.simulations)) writeSimulations_(body.simulations);
+  if (Array.isArray(body.matchLogs)) writeMatchLogs_(body.matchLogs);
   writeMeta_('activeMatch', body.activeMatch || '');
   return jsonResponse_({ ok: true });
 }
@@ -206,8 +209,8 @@ function writeTrainingLogs_(logs) {
   }
 }
 
-// ---- Tácticas y Simulaciones (solapas Táctica y Simulación) ----
-// Las dos hojas tienen el mismo formato, así que comparten el código: una fila
+// ---- Tácticas, Simulaciones y Partidos en vivo (solapas Táctica y Simulación, y la barra "En vivo" de Formación) ----
+// Las tres hojas tienen el mismo formato, así que comparten el código: una fila
 // por elemento con Id, Nombre, Creada, Actualizada, Eliminada y después el
 // dibujo (los "items") en formato JSON. Una celda de Sheets aguanta hasta
 // 50.000 caracteres, así que si el dibujo es muy grande se reparte en varias
@@ -279,6 +282,10 @@ function readTactics_() { return readDrawings_(SHEET_TACTICAS); }
 function writeTactics_(tactics) { writeDrawings_(SHEET_TACTICAS, tactics); }
 function readSimulations_() { return readDrawings_(SHEET_SIMULACIONES); }
 function writeSimulations_(simulations) { writeDrawings_(SHEET_SIMULACIONES, simulations); }
+// Partido en vivo: un registro por partido (Id = el del partido, Nombre = el rival) con el reloj, las jugadas y los
+// cambios como items en JSON (ver sanitizeLogItems en js/app.js).
+function readMatchLogs_() { return readDrawings_(SHEET_PARTIDOS_VIVO); }
+function writeMatchLogs_(logs) { writeDrawings_(SHEET_PARTIDOS_VIVO, logs); }
 
 // ---- Partidos (rival + fecha + qué forma tiene activa cada Plan) ----
 // ---- Formación (placements: Partido x Plan x forma táctica x jugadora) ----
