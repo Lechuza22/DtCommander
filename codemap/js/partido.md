@@ -69,8 +69,11 @@ flowchart TD
     setupPartido --> confirmAddMatch
 
     onTokenPointerDown --> startDrag --> dropPlayer
+    startDrag -->|"sin arrastrar"| togglePin --> renderSuggestions
     onChipPointerDown --> startDrag
     dropPlayer --> commit
+    renderSuggestions --> benchCandidates
+    suggestSub --> addSub
 
     changePhase --> recordOf
     addEvent --> recordOf
@@ -157,6 +160,38 @@ adentro de la cancha se ubica, soltada afuera va al banco. Desde el banco
 (`#liveAvailable`) se arrastra a la cancha. Si el gesto se cancela
 (`pointercancel`) se limpia sin cambiar nada. Cada ficha tiene un círculo
 transparente más grande que el visible para que no cueste agarrarla con el dedo.
+
+Un toque o clic **sin arrastrar** (el puntero se mueve menos de `TAP_PX` = 6 píxeles)
+no mueve nada: `startDrag` recién crea el "ghost" cuando el puntero se aleja, y si
+no lo hizo el gesto es un toque, que fija el panel de la jugadora (ver abajo). Así
+tocar una ficha tampoco la corre unos píxeles sin querer.
+
+## Perfil y cambios sugeridos: `renderSuggestions` / `benchCandidates` / `suggestSub`
+
+Al elegir una jugadora de la cancha aparece un panel (`#liveSuggestions`, dentro del
+banco) con su **gráfico de perfil** (el radar de atributos, con `buildOrUpdateRadar` de
+`app.js`) y los **cambios sugeridos** del banco.
+
+- **Vista previa con el mouse**: pasar el mouse por una ficha muestra el panel
+  (`hoverName`) y sacarlo lo oculta, igual que en Formación. Con el dedo no existe el
+  "pasar por encima", y en pantallas de hasta 640 px tampoco hay vista previa: ahí el
+  panel es una hoja fija abajo que taparía la ficha antes de tocarla.
+- **Fijarlo con un toque o clic** (`pinnedName`, `togglePin`): la ficha se marca con un
+  borde amarillo (`.selected`) y el panel queda visible hasta tocar la ✕, tocar la
+  cancha en un lugar vacío, tocar a otra jugadora o cambiar de partido. Recién fijado
+  muestra el botón **Cambio** en cada sugerida.
+- **`benchCandidates`**: del banco (las que no están en `meta.field`), primero las que
+  juegan el mismo puesto que la elegida (principal o secundario, como las alternativas
+  de Formación), ordenadas de mejor a peor promedio. Si nadie del banco juega ese
+  puesto, lo dice y muestra todo el banco. Cada una lleva su promedio (el mismo cálculo
+  y colores de la solapa Jugadora).
+- **`suggestSub`**: tocar "Cambio" deja armado el cambio **por hacer** (sale la
+  elegida, entra la sugerida), lo suma a los chips de la barra y cierra el panel; no
+  hace el cambio, para eso sigue el "Hecho". Pedir dos veces el mismo cambio avisa y
+  no lo duplica.
+- En escritorio el panel va dentro de la tarjeta del banco; en celular es una hoja fija
+  abajo de la pantalla (con el gráfico más chico), para que no empuje la cancha
+  mientras se toca.
 
 ## Cambios: `addSub` / `doSub` / `undoSub` / `removeSub`
 
