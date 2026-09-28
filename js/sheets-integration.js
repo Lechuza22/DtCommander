@@ -124,5 +124,22 @@ const SHEET_API_URL = 'https://script.google.com/macros/s/AKfycby2J1OBwdPhgTC07P
     }
   }
 
-  window.SheetsSync = { hydrate, scheduleSync, verificar };
+  // Administración de accesos (solo el DT): listar, generar o regenerar una clave, activar/desactivar y quitar.
+  // Devuelve siempre un objeto: { accesos: [...] } o { error }. Con un script viejo (sin candado) no hay accesos: { error: 'sin_candado' }.
+  async function gestionarAccesos(params) {
+    const acceso = window.Acceso;
+    const creds = acceso && acceso.credenciales();
+    if (!creds || creds.rol !== 'dt') return { error: 'permiso' };
+    if (!isConfigured()) return { error: 'sin_configurar' };
+    try {
+      const d = await leer(Object.assign({ rol: creds.rol, nombre: '', clave: creds.clave }, params));
+      if (d && d.error === 'auth') { rechazado(d); return d; }
+      if (!d || !d.protegido) return { error: 'sin_candado' };
+      return d;
+    } catch (err) {
+      return { error: 'red' };
+    }
+  }
+
+  window.SheetsSync = { hydrate, scheduleSync, verificar, gestionarAccesos };
 })();
