@@ -391,7 +391,7 @@ function defaultState() {
   // Solo en la demo inicial (plantel de ejemplo) dejamos el 2-3-2 ya armado.
   match.plans['Plan A'].formations['2-3-2'].placements = applyPresetToPlacements('2-3-2', DEFAULT_PLAYERS);
   const matches = { [matchId]: match };
-  return { players, matches, activeMatch: matchId, trainingLogs: [], tactics: [], simulations: [] };
+  return { players, matches, activeMatch: matchId, trainingLogs: [], tactics: [], simulations: [], matchLogs: [] };
 }
 
 // ---- Tácticas (tablero de la solapa Táctica; la UI vive en js/tactica.js) ----
@@ -569,6 +569,105 @@ function mergeSimulations(localList, remoteList) {
   return mergeById(localList, remoteList, sanitizeSimulations);
 }
 
+// ---- Partido en vivo (barra "En vivo" de Formación; la UI vive en js/partido.js) ----
+// Un registro por partido: { id (el del partido), name (el rival), createdAt, updatedAt, deleted, items[] }.
+// Mismo formato que Tácticas y Simulaciones: viaja por la misma hoja genérica del Apps Script y se une con la
+// Sheet por updatedAt. No se puede pisar lo local: un partido anotado en la cancha, sin señal, se perdería.
+// Los items son una lista plana:
+//   { type: 'meta', duration, phase, t1Start, t1End, t2Start, t2End, lineup[] }  uno solo por partido
+//        duration = minutos de CADA tiempo; phase = idle | t1 | ht | t2 | end; los t* son milisegundos
+//        (Date.now) y lineup = quiénes estaban en la cancha al arrancar el 1.er tiempo
+//   { type: 'event', id, kind, half, sec, player, assist, note }  kind = goal | goalRival | chance | danger;
+//        half y sec = tiempo (1 o 2) y segundos transcurridos DENTRO de ese tiempo
+//   { type: 'sub', id, out, in, status, half, sec }  status = pending (por hacer) | done (hecho, con su minuto)
+const MATCH_DURATIONS = [15, 20, 25, 30, 45];
+const MATCH_DEFAULT_DURATION = 25;
+const MATCH_PHASES = ['idle', 't1', 'ht', 't2', 'end'];
+const MATCH_EVENT_KINDS = ['goal', 'goalRival', 'chance', 'danger'];
+const MAX_LOG_EVENTS = 300;
+const MAX_LOG_SUBS = 60;
+
+function sanitizeLogItems(items) {
+  const list = Array.isArray(items) ? items : [];
+  const num = v => (v !== '' && v !== null && v !== undefined && Number.isFinite(Number(v))) ? Number(v) : null;
+  const txt = (v, max) => String(v === null || v === undefined ? '' : v).slice(0, max);
+  const secs = v => { const n = num(v); return n === null ? 0 : Math.min(7200, Math.max(0, Math.round(n))); };
+  const stamp = v => { const n = num(v); return n !== null && n > 0 ? n : null; };
+  let meta = null;
+  const events = [];
+  const subs = [];
+  list.forEach((raw, idx) => {
+    if (!raw) return;
+    if (raw.type === 'meta' && !meta) {
+      const t1Start = stamp(raw.t1Start), t1End = stamp(raw.t1End), t2Start = stamp(raw.t2Start), t2End = stamp(raw.t2End);
+      let phase = MATCH_PHASES.includes(raw.phase) ? raw.phase : 'idle';
+      // Si faltan las marcas de tiempo que esa fase necesita, se vuelve a la última fase que sí las tiene.
+      if (phase === 'end' && !(t2Start && t2End)) phase = 't2';
+      if (phase === 't2' && !t2Start) phase = 'ht';
+      if (phase === 'ht' && !(t1Start && t1End)) phase = 't1';
+      if (phase === 't1' && !t1Start) phase = 'idle';
+      const duration = Number(raw.duration);
+      meta = {
+        id: 'meta',
+        type: 'meta',
+        duration: MATCH_DURATIONS.includes(duration) ? duration : MATCH_DEFAULT_DURATION,
+        phase,
+        t1Start, t1End, t2Start, t2End,
+        lineup: (Array.isArray(raw.lineup) ? raw.lineup : []).slice(0, 30).map(n => txt(n, 40)).filter(Boolean)
+      };
+    } else if (raw.type === 'event' && MATCH_EVENT_KINDS.includes(raw.kind) && events.length < MAX_LOG_EVENTS) {
+      events.push({
+        id: txt(raw.id || 'e' + idx, 40),
+        type: 'event',
+        kind: raw.kind,
+        half: Number(raw.half) === 2 ? 2 : 1,
+        sec: secs(raw.sec),
+        player: txt(raw.player, 40),
+        assist: txt(raw.assist, 40),
+        note: txt(raw.note, 120)
+      });
+    } else if (raw.type === 'sub' && subs.length < MAX_LOG_SUBS) {
+      const out = txt(raw.out, 40), inn = txt(raw.in, 40);
+      if (!out || !inn) return;
+      const done = raw.status === 'done';
+      subs.push({
+        id: txt(raw.id || 's' + idx, 40),
+        type: 'sub',
+        out,
+        in: inn,
+        status: done ? 'done' : 'pending',
+        half: done && Number(raw.half) === 2 ? 2 : 1,
+        sec: done ? secs(raw.sec) : 0
+      });
+    }
+  });
+  if (!meta) {
+    meta = { id: 'meta', type: 'meta', duration: MATCH_DEFAULT_DURATION, phase: 'idle', t1Start: null, t1End: null, t2Start: null, t2End: null, lineup: [] };
+  }
+  return [meta, ...events, ...subs];
+}
+
+function sanitizeMatchLog(raw) {
+  if (!raw || !raw.id) return null;
+  const deleted = raw.deleted === true || raw.deleted === 'true' || raw.deleted === 'si';
+  return {
+    id: String(raw.id),
+    name: String(raw.name || '').slice(0, 60),
+    createdAt: String(raw.createdAt || ''),
+    updatedAt: String(raw.updatedAt || ''),
+    deleted,
+    items: deleted ? [] : sanitizeLogItems(raw.items)
+  };
+}
+
+function sanitizeMatchLogs(list) {
+  return (Array.isArray(list) ? list : []).map(sanitizeMatchLog).filter(Boolean);
+}
+
+function mergeMatchLogs(localList, remoteList) {
+  return mergeById(localList, remoteList, sanitizeMatchLogs);
+}
+
 function loadLocal() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -582,6 +681,7 @@ function loadLocal() {
     }
     parsed.tactics = sanitizeTactics(parsed.tactics);
     parsed.simulations = sanitizeSimulations(parsed.simulations);
+    parsed.matchLogs = sanitizeMatchLogs(parsed.matchLogs);
     return parsed;
   } catch (err) {
     return null;
@@ -639,6 +739,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupTabs();
     setupEvaluador();
     setupFormacion();
+    if (typeof setupPartido === 'function') setupPartido();
     setupDashboard();
     setupEntrenamiento();
     if (typeof setupTactica === 'function') setupTactica();
@@ -706,7 +807,8 @@ function normalizeRemoteState(remote) {
     activeMatch,
     trainingLogs: remote.trainingLogs || [],
     tactics: mergeTactics(state.tactics, remote.tactics),
-    simulations: mergeSimulations(state.simulations, remote.simulations)
+    simulations: mergeSimulations(state.simulations, remote.simulations),
+    matchLogs: mergeMatchLogs(state.matchLogs, remote.matchLogs)
   };
 }
 
@@ -1343,6 +1445,7 @@ function setupMatchControls() {
     clearTimeout(armTimer);
     removeBtn.textContent = 'Eliminar partido';
 
+    if (typeof removeMatchLog === 'function') removeMatchLog(state.activeMatch);
     delete state.matches[state.activeMatch];
     state.activeMatch = Object.keys(state.matches)[0];
     saveState();
@@ -1424,6 +1527,9 @@ function renderFormacion() {
   Object.entries(placements).forEach(([name, pos]) => {
     field.appendChild(createFieldToken(name, pos.x, pos.y));
   });
+
+  // La barra "En vivo" depende del partido y de quiénes están en la cancha.
+  if (typeof renderPartido === 'function') renderPartido();
 }
 
 // Chip de jugadora reutilizado en "Disponibles" y en "Alternativas"
