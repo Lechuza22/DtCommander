@@ -1,10 +1,12 @@
 # js/partido.js
 
-La solapa **Partido** (grupo Partido): el modo en vivo de un partido. Tiene un
-reloj (1.er tiempo, entretiempo, 2.º tiempo y final), el marcador, botones de un
-toque para anotar jugadas (gol nuestro, gol rival, jugada de gol, jugada
-peligrosa), una **cancha propia del partido** con las jugadoras y el banco, y los
-cambios con su estado "por hacer" y "hecho". Formación sigue siendo solo
+La solapa **En vivo** (grupo Partido; su panel es `panel-partido`): el modo en vivo de
+un partido. Tiene un reloj (1.er tiempo, entretiempo, 2.º tiempo y final), el marcador,
+botones de un toque para anotar jugadas (gol nuestro, gol rival, jugada de gol, jugada
+peligrosa; y falta, tiro libre, córner, lateral y penal, que preguntan si fue a favor o en
+contra), una **cancha propia del partido** con las jugadoras y el banco, y los
+cambios con su estado "por hacer" y "hecho". Lo ya anotado se ve después en la
+solapa [Jugados](jugados.md). Formación sigue siendo solo
 planificación: acá se elige el mismo partido (rival y fecha) y se **trae la
 alineación** de un plan de Formación o de una táctica guardada.
 
@@ -35,7 +37,7 @@ la cancha, sin señal, no se pierde cuando después se sincroniza. Los `items`:
 | type | campos | qué es |
 |---|---|---|
 | `meta` | `duration, phase, t1Start, t1End, t2Start, t2End, lineup, field` | uno solo: minutos de cada tiempo (15, 20, 25, 30 o 45), la fase (`idle`, `t1`, `ht`, `t2`, `end`), las horas de inicio y fin de cada tiempo en milisegundos, quiénes estaban en la cancha al arrancar (`lineup`) y la **cancha del partido ahora** (`field`: `{ nombre: { x, y } }`) |
-| `event` | `id, kind, half, sec, player, assist, note` | una jugada: `goal`, `goalRival`, `chance` o `danger`; `half` y `sec` = tiempo (1 o 2) y segundos transcurridos **dentro** de ese tiempo |
+| `event` | `id, kind, side, half, sec, player, assist, note` | una jugada: `goal`, `goalRival`, `chance` o `danger` (ya dicen de qué lado son), o `foul`, `freeKick`, `corner`, `throwIn` o `penalty`, que llevan `side` = `for` (a favor) o `against` (en contra); `half` y `sec` = tiempo (1 o 2) y segundos transcurridos **dentro** de ese tiempo |
 | `sub` | `id, out, in, status, half, sec` | un cambio: `pending` (por hacer) o `done` (hecho, con el momento en que se hizo) |
 
 `sanitizeLogItems` (en `app.js`) limpia todo lo que llega de afuera: descarta
@@ -133,6 +135,30 @@ lista de "Jugadas del partido": quién metió el gol y quién asistió (`player`
 corregir a mano (sirve para cargar jugadas mirando la grabación después). Se
 guarda al salir del campo (`change`, no `input`), así la lista no se redibuja
 mientras se escribe. El marcador sale de contar los `goal` y los `goalRival`.
+
+### Falta, tiro libre, córner, lateral y penal: `askSide` / `chooseSide`
+
+Debajo de los cuatro botones grandes hay una fila chica con cinco más (Falta, Tiro
+libre, Córner, Lateral y Penal). Como cada una puede ser **a favor o en contra**, en vez
+de duplicar los botones (diez más) se tocan en dos pasos: al tocar uno, esa **misma fila**
+se convierte en el selector "A favor / En contra" (`askSide`), y al elegir el lado
+(`chooseSide`) se anota la jugada. La fila mide lo mismo antes y después, así la barra no
+cambia de alto ni mueve la cancha. Detalles:
+
+- El **minuto es el del primer toque**, no el de cuando se elige el lado (`pendingSide`
+  guarda la posición del reloj en ese momento).
+- Se cancela con la ✕, al cambiar de partido o **solo a los 8 segundos** (`SIDE_ASK_MS`),
+  para que un toque perdido no deje la pregunta abierta en pleno partido.
+- Ninguna de estas jugadas toca el marcador.
+- El "quién" se completa después, abajo, en la lista: un desplegable cuya leyenda depende
+  de la jugada y el lado (`WHO_PROMPTS`: "Quién la recibió…" / "Quién la cometió…", "Quién
+  lo ejecutó…", "Quién lo pateó…"). El lado también se puede corregir ahí mismo (`updateEvent`
+  con el campo `side`), y la jugada pasa a llamarse "Falta a favor" o "Falta en contra"
+  (`eventLabel`) conservando a quién se eligió.
+- `sanitizeLogItems` (en `app.js`) le pone `side` a estas jugadas (a favor si falta o viene
+  raro) y se lo saca a las que no lo llevan, y descarta un tipo que no conoce.
+- Lo que la solapa comparte con [Jugados](jugados.md) (`KIND_LABELS`, `eventLabel`,
+  `minuteLabel`...) se expone en `window.PartidoUtil`.
 
 ## Traer la alineación: `bringLineup` / `sourcePlacements` / `syncSourceSelects`
 
