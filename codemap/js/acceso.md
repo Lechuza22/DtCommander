@@ -30,7 +30,8 @@ flowchart TD
     verificar -->|"ok pero script viejo (sin candado)"| SoloDT["deja pasar solo al DT; al soporte le explica"]
     verificar -->|"auth / bloqueado / ocupado / sin_clave_dt / red"| Mensaje["mensaje en #loginError"]
     MostrarApp --> Hydrate["SheetsSync.hydrate() con las credenciales"]
-    Hydrate -->|"el script dice que la clave ya no vale"| sesionInvalida["sesionInvalida(): cierra la sesión y avisa"]
+    Hydrate -->|"el script rechaza la clave (también al reintentar)"| claveRechazada["claveRechazada(): cartel #claveAviso, la sesión SIGUE"]
+    claveRechazada -->|"toque en Entrar de nuevo"| sesionInvalida["sesionInvalida(): cierra la sesión"]
     Hydrate -->|"el script no está protegido"| marcarServidor["marcarServidor(false): cartel #candadoAviso (solo al DT)"]
 ```
 
@@ -53,9 +54,17 @@ entrega o se acepta lo decide el Apps Script; esta tabla lo dice en pantalla.
   Al salir una jugadora se borra su espacio, y al entrar el DT o el soporte también.
 - **`marcarServidor(protegido)`**: la sincronización avisa si el script está protegido. Un script viejo (sin
   candado) no lo está: al DT se le muestra `#candadoAviso` con lo que tiene que hacer.
-- **`sesionInvalida()`**: si el script contesta que la clave ya no es válida (por ejemplo, cambiaron `DT_KEY`), se
-  cierra la sesión y la entrada muestra "Tu clave ya no es válida" (el aviso pasa por `sessionStorage`, porque la
-  página se recarga).
+- **`claveRechazada()` / `claveAceptada()`**: si el script no acepta la clave guardada (por ejemplo, cambiaron `DT_KEY`),
+  incluso después de reintentar, se muestra el cartel `#claveAviso` con el botón "Entrar de nuevo". **La sesión no se cierra
+  sola**: antes sí se cerraba al primer rechazo, y eso podía dejar al DT afuera en plena cancha, sin señal para volver a
+  entrar, por un rechazo aislado. Con el cartel se puede seguir trabajando (queda guardado en el dispositivo) y el cartel se
+  esconde solo si un pedido posterior sale bien.
+- **`sesionInvalida()`**: es lo que hace el botón "Entrar de nuevo": cierra la sesión y la entrada muestra "Ingresá de nuevo
+  con tu clave" (el aviso pasa por `sessionStorage`, porque la página se recarga).
+- **`registrar(tipo, ms, resultado, nota)`**, **`diagnostico()`**, **`borrarDiagnostico()`**: el historial de conexión de este
+  dispositivo (`localStorage['dtcomander_diag']`, los últimos 30 pedidos: entrar, cargar datos y guardar, con lo que tardaron
+  y cómo salieron; **sin claves**). Se ve en [Ajustes → Conexión](ajustes.md).
+- Al entrar, si Google tarda más de 3 segundos el botón pasa a "Verificando con Google… puede tardar".
 - **`cerrarSesion()`**: borra la sesión y recarga.
 
 ## Detalles que importan
