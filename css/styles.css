@@ -131,6 +131,16 @@ header h1 {
 }
 .btn-logout.armado { width: auto; padding: 0 8px; background: var(--danger); border-color: var(--danger); }
 
+.cargando-aviso {
+  background: #e8f1fb;
+  color: #17406b;
+  border-bottom: 2px solid #9bbfe6;
+  padding: 0.5rem 1rem;
+  font-size: 13px;
+  text-align: center;
+}
+.clave-aviso { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.conexion-resumen { margin: 0.4rem 0 0.8rem; line-height: 1.5; }
 .candado-aviso {
   background: #fff4d6;
   color: #6b4a00;
