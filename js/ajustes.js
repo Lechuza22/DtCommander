@@ -178,10 +178,41 @@
     });
   }
 
+  // Conexión: el historial que guarda este dispositivo (js/acceso.js → registrar): qué se pidió, cuánto tardó y cómo salió.
+  const NOMBRE_PEDIDO = { entrada: 'Entrar', lectura: 'Cargar datos', guardado: 'Guardar' };
+  const segundos = ms => (ms / 1000).toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' s';
+  const RESULTADO = { ok: 'Bien', 'clave rechazada': 'Clave rechazada', 'sin conexión': 'Sin conexión', 'sin confirmación': 'Enviado, sin confirmación', ocupado: 'Servidor ocupado', red: 'Sin conexión', auth: 'Clave incorrecta', bloqueado: 'Bloqueado por intentos' };
+
+  function renderConexion() {
+    const lista = window.Acceso.diagnostico().slice().reverse();
+    const tabla = $('conexionTabla');
+    tabla.textContent = '';
+    const cab = tabla.insertRow();
+    ['Hora', 'Pedido', 'Tardó', 'Resultado'].forEach(t => { const th = document.createElement('th'); th.textContent = t; cab.appendChild(th); });
+    lista.forEach(e => {
+      const tr = tabla.insertRow();
+      tr.insertCell().textContent = new Date(e.t).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      tr.insertCell().textContent = NOMBRE_PEDIDO[e.tipo] || String(e.tipo);
+      tr.insertCell().textContent = segundos(e.ms);
+      const td = tr.insertCell();
+      td.textContent = (RESULTADO[e.res] || String(e.res)) + (e.nota ? ' — ' + e.nota : '');
+      td.className = e.res === 'ok' ? 'nivel-editar' : 'nivel-ver';
+    });
+    const lecturas = lista.filter(e => e.tipo === 'lectura' && e.res === 'ok').map(e => e.ms);
+    const rechazos = lista.filter(e => e.res === 'clave rechazada' || /rechazado/.test(e.nota || '')).length;
+    const resumen = $('conexionResumen');
+    if (!lista.length) { resumen.textContent = 'Todavía no hay pedidos registrados en este dispositivo.'; return; }
+    const partes = [];
+    if (lecturas.length) partes.push(`Cargar los datos tardó en promedio ${segundos(lecturas.reduce((a, b) => a + b, 0) / lecturas.length)} (la más lenta, ${segundos(Math.max(...lecturas))}; ${lecturas.length} ${lecturas.length === 1 ? 'vez' : 'veces'}).`);
+    partes.push(rechazos ? `El script rechazó la clave ${rechazos} ${rechazos === 1 ? 'vez' : 'veces'}.` : 'El script nunca rechazó la clave.');
+    resumen.textContent = partes.join(' ');
+  }
+
   function mostrarPestana(nombre) {
     document.querySelectorAll('#ajustes .ajustes-tab').forEach(b => b.classList.toggle('active', b.dataset.pestana === nombre));
     document.querySelectorAll('#ajustes .ajustes-body > section').forEach(s => { s.hidden = s.dataset.pestana !== nombre; });
     if (nombre === 'accesos' && !cargado) llamar({ accion: 'accesos_listar' });
+    if (nombre === 'conexion') renderConexion();
   }
 
   function abrir() {
@@ -214,6 +245,7 @@
     $('ajustesCerrar').addEventListener('click', cerrar);
     $('ajustes').addEventListener('click', e => { if (e.target === $('ajustes')) cerrar(); });
     document.querySelectorAll('#ajustes .ajustes-tab').forEach(b => b.addEventListener('click', () => mostrarPestana(b.dataset.pestana)));
+    $('conexionBorrar').addEventListener('click', () => { window.Acceso.borrarDiagnostico(); renderConexion(); });
     $('ajustes-accesos').addEventListener('click', e => {
       const f = e.target.closest('.acceso-fila');
       filaActiva = f ? { rol: f.dataset.rol, nombre: f.dataset.nombre } : null;
