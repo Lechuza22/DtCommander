@@ -84,8 +84,10 @@ de nombre, no tiene que ver con autenticación.)
 Un período de interacción de un usuario con una aplicación, generalmente
 persistido con cookies o almacenamiento del navegador.
 
-**En este proyecto:** no hay sesiones ni login — es una app de un solo
-usuario (el DT) sin autenticación.
+**En este proyecto:** la sesión es lo que [js/acceso.js](js/acceso.md)
+guarda en `localStorage['dtcomander_sesion']`: quién entró (rol y nombre) y
+la clave que escribió. Sirve para no pedirla en cada visita; quien la valida
+es el Apps Script en cada pedido.
 
 ### cache
 
@@ -246,11 +248,35 @@ código fuente puede leer la contraseña o saltear el chequeo
 directamente. Sirve como filtro contra quien llega de casualidad, no
 contra quien busca entrar a propósito.
 
-**En este proyecto:** DTCommander no tiene servidor propio (ver
-[Web App (Google Apps Script)](#web-app-google-apps-script) más abajo),
-así que [js/auth.js](js/auth.md) es necesariamente de este segundo tipo
-— el email y la contraseña están en texto plano en ese archivo a
-propósito, porque esconderlos no cambiaría nada real.
+**En este proyecto:** DTCommander no tiene servidor propio, pero el
+[Web App (Google Apps Script)](#web-app-google-apps-script) cumple ese
+papel: ahí se comprueban las claves y se decide qué se entrega a cada rol,
+así que es una autenticación real. La primera versión de la app usaba una
+"cortina" (`js/auth.js`, con el mail y la contraseña escritos en el código
+público) y se reemplazó; [js/acceso.js](js/acceso.md) ya no tiene ninguna
+clave escrita, solo pide la que corresponde y la manda al script.
+
+### Propiedades del script (Script Properties)
+
+Un almacén de pares nombre-valor que Google Apps Script guarda aparte del
+código: no se ve en el código pegado ni en un repositorio. Sirve para
+guardar claves y contadores.
+
+**En este proyecto:** ahí vive `DT_KEY`, la clave del DT (se carga a mano
+en Configuración del proyecto → Propiedades del script), y los contadores
+de intentos fallidos de las jugadoras (`fallo_<nombre>`).
+
+### bloqueo por intentos (rate limiting)
+
+Limitar cuántas veces se puede probar una clave en un lapso, para que
+adivinarla probando todas las combinaciones lleve demasiado tiempo.
+
+**En este proyecto:** un PIN de 4 dígitos tiene solo 10.000 combinaciones,
+así que 5 intentos fallidos en 30 minutos bloquean ese nombre por 30
+minutos (ver "Acceso y permisos" en
+[data/google-apps-script.js](data/google-apps-script.md)). A la clave del DT
+no se le pone bloqueo: es larga, y un bloqueo dejaría a un desconocido
+sacar al DT de su propia app errando a propósito.
 
 ### Web App (Google Apps Script)
 
