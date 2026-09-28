@@ -1,457 +1,108 @@
-# 🛠️ DTCommander - Guía de desarrollo en VS Code
+# DTCommander
 
-**Cómo editar, mejorar y customizar DTCommander desde Visual Studio Code**
+Herramienta web para que un DT de fútbol femenino (fútbol 8) evalúe a sus jugadoras, arme la formación, dibuje jugadas, lleve los partidos en vivo y planifique entrenamientos.
 
----
+Es una página estática (HTML, CSS y JavaScript, sin proceso de compilación) publicada en GitHub Pages. Guarda sus datos en una Google Sheet a través de un Google Apps Script.
 
-## 📖 Tabla de Contenidos
+- App: https://lechuza22.github.io/DtCommander/
+- Estado: modo prueba, con un solo equipo. El plan es pasar a Firebase (ver "Hacia dónde va").
 
-1. [Abrir proyecto en VS Code](#abrir-proyecto-en-vs-code)
-2. [Estructura de archivos](#estructura-de-archivos)
-3. [Extensiones útiles](#extensiones-útiles)
-4. [Flujo de desarrollo](#flujo-de-desarrollo)
-5. [Hacer cambios](#hacer-cambios)
-6. [Testing y debugging](#testing-y-debugging)
-7. [Tips de desarrollo](#tips-de-desarrollo)
+## Qué tiene
 
----
+| Grupo | Solapa | Para qué sirve |
+|---|---|---|
+| Equipo | Evaluador | Puntuar 11 atributos por jugadora (radar), cargar sus datos y guardar evaluaciones con fecha |
+| Equipo | Jugadora | Ficha de solo lectura: promedio ponderado por puesto, atributos con color y evolución |
+| Equipo | Entrenamiento | Rúbrica por posición y sugerencias de trabajo |
+| Planificar | Formación | Partidos con tres planes (A, B y C) y formaciones 2-3-2, 3-2-2 y 2-2-3 sobre la cancha |
+| Planificar | Táctica | Tablero libre (flechas, lápiz, texto) con historial y exportación como imagen |
+| Planificar | Simulación | Jugadas animadas por fases, con grilla, zonas y goles; se descargan en video MP4 |
+| Partido | En vivo | Reloj por tiempos, marcador, jugadas (goles, ocasiones, faltas, tiros libres, córners, laterales y penales, a favor o en contra), cambios, cancha propia y cambios sugeridos del banco |
+| Partido | Jugados | Partidos ya terminados, con resultado, resumen a favor y en contra, goleadoras y línea de tiempo |
 
-## 🚀 Abrir proyecto en VS Code
+Además, el engranaje del encabezado abre **Ajustes** (solo para el DT): accesos con PIN y claves, política de datos, permisos e historial de conexión.
 
-### Opción 1: Desde terminal
-```bash
-cd ~/projects/dtcomander
-code .
-```
+## Quién puede qué
 
-### Opción 2: Desde VS Code
-1. File → Open Folder
-2. Selecciona `~/projects/dtcomander/`
-3. Listo, el proyecto se abre
+| Rol | Entra con | Puede |
+|---|---|---|
+| DT | Una clave larga guardada en el Apps Script (`DT_KEY`) | Ver y editar todo, y administrar los accesos |
+| Soporte (equipo técnico) | Su nombre y una clave larga que genera el DT | Ver y editar todo, menos Ajustes |
+| Jugadora | Su nombre y un PIN de 4 dígitos | Solo mirar lo que le corresponde. **La vista de jugadora todavía no está hecha**: hoy no puede entrar |
 
----
+La tabla completa está en Ajustes → Permisos.
 
-## 📁 Estructura de archivos
+## Cómo funciona
 
-```
-dtcomander/
-├── index.html                 ← Estructura HTML (UI)
-├── css/
-│   └── styles.css            ← Todos los estilos (responsive, temas)
-├── js/
-│   ├── app.js                ← Lógica principal (evaluaciones, formaciones, storage)
-│   └── sheets-integration.js ← Google Sheets sync (opcional)
-├── data/
-│   └── google-apps-script.js ← Código para Google Apps Script
-├── README.md                 ← Documentación completa
-├── QUICK_START.md            ← Guía rápida
-└── DESARROLLO_VSCODE.md      ← Este archivo
-```
+- **Datos.** Cada dispositivo guarda una copia en `localStorage` y sincroniza en segundo plano con la Google Sheet a través del Apps Script (`data/google-apps-script.js`). No hay botón de sincronizar.
+- **Seguridad.** La página es pública pero no contiene datos del equipo: el Apps Script exige una clave para leer y para escribir, y a cada rol solo le entrega lo que le corresponde. No hay claves escritas en el código. Límites a tener presentes: un PIN de 4 dígitos es débil aunque haya bloqueo por intentos; quien pueda editar la Sheet ve todas las claves (no conviene compartirla); y si dos personas editan a la vez, gana la última escritura.
+- **Google es lento a veces.** El Apps Script puede tardar entre unos segundos y casi un minuto en contestar. La app abre al instante con lo guardado en el dispositivo y actualiza cuando Google contesta; Ajustes → Conexión muestra cuánto tardó cada pedido.
+- **Datos de menores.** Muchas jugadoras son menores. La política de datos (borrador) está en Ajustes. Conviene pedir autorización a las familias y no compartir capturas con datos de las chicas.
 
-### Qué hace cada archivo
+## Puesta en marcha con tu propia Sheet
 
-| Archivo | Responsabilidad | Cuándo editarlo |
-|---------|-----------------|-----------------|
-| **index.html** | Estructura + formularios + tabs | Agregar nuevas secciones, campos, botones |
-| **styles.css** | Diseño, colores, responsive | Cambiar colores, layouts, estilos |
-| **app.js** | Lógica de evaluaciones, formaciones, storage local | Agregar atributos, formaciones, lógica |
-| **sheets-integration.js** | Sincronización con Google Sheets | Cambiar cómo se sincronizan datos |
-| **google-apps-script.js** | Backend en Google Apps Script | Cambiar estructura de Sheets |
+1. Abrí tu Google Sheet y andá a Extensiones → Apps Script.
+2. En Configuración del proyecto → Propiedades del script, agregá `DT_KEY` con una clave larga que solo sepas vos. Sin esa propiedad el script no deja entrar a nadie.
+3. Borrá el contenido de `Code.gs` y pegá `data/google-apps-script.js`.
+4. Implementar → Nueva implementación → Aplicación web (ejecutar como "Yo", acceso "Cualquier usuario"). Si ya tenías una implementación, publicá una versión nueva de la misma: la dirección no cambia.
+5. Pegá la dirección resultante en `SHEET_API_URL`, en `js/sheets-integration.js`.
+6. Abrí la app y entrá como DT con esa clave.
 
----
+Si agregás o sacás un atributo en `ATTRIBUTES` (`js/app.js`), hacé el mismo cambio en `data/google-apps-script.js` y volvé a publicar el script.
 
-## 🧩 Extensiones útiles en VS Code
-
-### Recomendadas (instala estas)
-
-```
-Ctrl+Shift+X (Buscar y instalar)
-```
-
-1. **Live Server** (Ritwick Dey)
-   - Abre un servidor local en http://localhost:5500
-   - Los cambios en CSS/JS se reflejan automáticamente (sin F5)
-   - Click derecho en `index.html` → "Open with Live Server"
-
-2. **Prettier** (Code formatter)
-   - Formatea automáticamente HTML/CSS/JS
-   - Instalación: `Ctrl+Shift+X` → busca "Prettier" → instala
-   - Uso: `Shift+Alt+F` para formatear
-
-3. **Thunder Client** o **REST Client**
-   - Para testear llamadas a Google Apps Script
-   - Útil cuando sincronizas con Sheets
-
-4. **Color Picker** (Sarah Drasner)
-   - Click derecho en colores para seleccionar visualmente
-   - Útil para editar CSS
-
-5. **HTML CSS Support**
-   - Autocompletado de clases CSS en HTML
-
----
-
-## ⚙️ Flujo de desarrollo
-
-### Workflow típico:
-
-```
-1. Abre VS Code
-   code ~/projects/dtcomander
-
-2. Abre Live Server
-   Click derecho en index.html → "Open with Live Server"
-
-3. Navegador abre en http://localhost:5500
-
-4. Edita en VS Code (CSS/JS/HTML)
-   Los cambios aparecen automáticamente en navegador (F5 si no)
-
-5. F12 en navegador para debuggear (consola, inspector)
-
-6. Guarda cambios (Ctrl+S)
-
-7. Listo, tu app está actualizada
-```
-
----
-
-## 🎨 Hacer cambios comunes
-
-### 1️⃣ Cambiar colores
-
-**Archivo:** `css/styles.css`
-
-Busca `:root` al inicio:
-```css
-:root {
-    --primary: #185FA5;        ← Azul principal
-    --primary-dark: #0d3a75;   ← Azul oscuro
-    --success: #0d7d2a;        ← Verde
-    --danger: #a32d2d;         ← Rojo
-    ...
-}
-```
-
-**Cambio rápido:**
-- Selecciona el color
-- Extensión "Color Picker" → elige color
-- Se actualiza automáticamente
-
----
-
-### 2️⃣ Agregar un nuevo atributo
-
-**Archivo:** `js/app.js`
-
-Busca `const attributes` (línea ~20):
-```javascript
-const attributes = [
-    'Técnica', 'Pegada', 'Defensa', 'Ataque', 'Regate', 
-    'Cabeceo', 'Velocidad', 'Visión', 'Posicionamiento', 'Mentalidad', 'Portería',
-    'TU_NUEVO_ATRIBUTO'  ← Agrega aquí
-];
-```
-
-Eso es todo. El gráfico, sliders y tabla se actualizan automáticamente.
-
----
-
-### 3️⃣ Agregar una nueva jugadora
-
-**Archivo:** `index.html`
-
-Busca `<select id="playerSelect">` (línea ~68):
-```html
-<option value="Ine">Ine</option>
-<option value="Agos">Agos</option>
-<!-- Agrega aquí -->
-<option value="TU_JUGADORA">TU_JUGADORA</option>
-```
-
-Listo, la app reconoce la jugadora automáticamente.
-
----
-
-### 4️⃣ Cambiar la alineación del campo
-
-**Archivo:** `js/app.js`
-
-Busca `const fieldPositions` (línea ~40):
-```javascript
-const fieldPositions = {
-    '2-3-2': [
-        {x: 150, y: 350, label: 'A'},      ← Arquera
-        {x: 80, y: 280, label: 'D1'},      ← Defensa 1
-        // ... más posiciones
-    ]
-}
-```
-
-Los números `x` e `y` son coordenadas en el SVG:
-- **x**: posición horizontal (10-290)
-- **y**: posición vertical (10-390)
-
-Ajusta para cambiar dónde aparecen los jugadores.
-
----
-
-### 5️⃣ Cambiar estilos (colores, tamaños, fuentes)
-
-**Archivo:** `css/styles.css`
-
-Ejemplos:
-
-**Cambiar tamaño de fuente del encabezado:**
-```css
-header h1 {
-    font-size: 32px;  ← Cambiar a 40px, 28px, etc.
-}
-```
-
-**Cambiar espaciado:**
-```css
-.card {
-    padding: 1.5rem;  ← Cambiar a 1rem, 2rem, etc.
-    margin-bottom: 1.5rem;
-}
-```
-
-**Cambiar ancho máximo:**
-```css
-.container {
-    max-width: 1200px;  ← Cambiar a 800px, 1400px, etc.
-}
-```
-
----
-
-## 🔍 Testing y debugging
-
-### Abrir DevTools en navegador
-
-```
-F12 (Windows/Linux)
-Cmd+Option+I (Mac)
-```
-
-**Tabs útiles:**
-
-1. **Console** 
-   - Ver errores de JavaScript
-   - Ejecutar comandos: `localStorage.getItem('dtcomander_data')`
-
-2. **Inspector (Elements)**
-   - Ver estructura HTML
-   - Editar estilos en vivo (Ctrl+Click)
-   - Debuggear responsividad
-
-3. **Network**
-   - Ver llamadas a Google Apps Script
-   - Ver si Chart.js carga desde CDN
-
-4. **Application**
-   - Ver localStorage (dónde se guardan los datos)
-   - Path: Application → Local Storage → http://localhost:5500
-
----
-
-### Comandos útiles en Console
-
-```javascript
-// Ver todos los datos guardados
-JSON.parse(localStorage.getItem('dtcomander_data'))
-
-// Limpiar datos
-localStorage.removeItem('dtcomander_data')
-
-// Ver objeto de jugadora específica
-JSON.parse(localStorage.getItem('dtcomander_data')).playerData.Ine
-
-// Resetear todo
-localStorage.clear()
-```
-
----
-
-### Debuggear formaciones
-
-En `js/app.js`, agrega `console.log` temporalmente:
-
-```javascript
-function updateFormationUI() {
-    console.log('Formation:', teamFormation);  ← Ver datos
-    console.log('Players:', playerData);       ← Ver jugadoras
-    updateAvailablePlayers();
-    updateFieldPlayers();
-}
-```
-
-Luego abre DevTools → Console y ves los datos.
-
----
-
-## 💡 Tips de desarrollo
-
-### 1. Usa Find & Replace para cambios globales
-
-```
-Ctrl+H → Find: "Técnica"
-         Replace: "Control"
-         Replace All
-```
-
-Útil para cambiar nombres de atributos en todos lados.
-
----
-
-### 2. Snippet rápido para agregar sliders
-
-Si necesitas agregar un control rápido, copia/pega:
-
-```html
-<!-- En index.html -->
-<div class="slider-group">
-    <span class="slider-label">Atributo</span>
-    <input type="range" min="1" max="10" value="5">
-    <span class="slider-value">5</span>
-</div>
-```
-
----
-
-### 3. Editar CSS en DevTools (preview antes de guardar)
-
-1. F12 → Inspector
-2. Haz click derecho en elemento
-3. "Inspect Element"
-4. Click en estilos (derecha)
-5. Edita valores
-6. **Luego copia los cambios a `css/styles.css`**
-
----
-
-### 4. Responsive testing en VS Code
-
-Extensión: **Responsive Viewer**
-```
-Ctrl+Shift+X → "Responsive Viewer" → instala
-```
-
-Luego: `Ctrl+K Ctrl+I` para ver mobile/tablet/desktop side-by-side.
-
----
-
-### 5. Versionado con Git (opcional)
-
-Si quieres trackear cambios:
+## Correrlo en tu compu
 
 ```bash
-cd ~/projects/dtcomander
-git init
-git add .
-git commit -m "v1.0 - DTCommander inicial"
-
-# Luego cada cambio:
-git add -A
-git commit -m "Agregué nuevo atributo: Inteligencia"
+cd dtcomander
+python3 -m http.server 8000   # y abrí http://localhost:8000
 ```
 
----
+También sirve la extensión Live Server de VS Code.
 
-## 🔗 Documentación de referencia
+## Cambios frecuentes
 
-| Necesidad | Archivo |
-|-----------|---------|
-| Usando la app | QUICK_START.md |
-| Setup Google Sheets | README.md |
-| Estructura datos | README.md → "Estructura de Datos" |
-| Solucionar problemas | README.md → "Troubleshooting" |
+| Quiero | Dónde |
+|---|---|
+| Cambiar colores | Variables en `:root`, al principio de `css/styles.css` |
+| Agregar una jugadora | Desde la app: Evaluador → + Jugadora |
+| Agregar un atributo | `ATTRIBUTES` en `js/app.js` y en `data/google-apps-script.js` |
+| Cambiar dónde arranca cada jugadora en una formación | `FORMATION_PRESETS` en `js/app.js` (cancha de 300 x 400, con márgenes de 10) |
 
----
+## Documentación técnica
 
-## 🚀 Próximos cambios sugeridos
+Todo el código está explicado en `codemap/`: [ARCHITECTURE.md](codemap/ARCHITECTURE.md) (diagrama y flujo), [GLOSSARY.md](codemap/GLOSSARY.md) (términos) y un documento por módulo en `codemap/js/`, `codemap/css/` y `codemap/data/`.
 
-### Fáciles (15 min)
-- [ ] Cambiar colores primarios
-- [ ] Agregar 1-2 atributos nuevos
-- [ ] Agregar 3-4 jugadoras nuevas
-- [ ] Cambiar textos/labels
+## Cómo se publica
 
-### Medio (1 hora)
-- [ ] Agregar 4ª formación personalizada
-- [ ] Cambiar Layout del campo visual
-- [ ] Mejorar estilos mobile
+GitHub Pages sirve la rama `main`. Cada cambio se sube al repositorio y queda como una confirmación (commit) con su mensaje; en este proyecto se hace con la API de GitHub (`gh api`), una confirmación por archivo. La carpeta local **no es un repositorio git**.
 
-### Avanzado (2+ horas)
-- [ ] Agregar historial de evaluaciones (versiones)
-- [ ] Exportar a PDF en lugar de CSV
-- [ ] Sistema de comparación entre jugadoras
-- [ ] Gráficos adicionales (Box plot, heatmap)
+Hay archivos que se mantienen solo en la compu, a propósito: la guía de instalación personal, el material de autoevaluación de las jugadoras, las capturas originales (`images/originales/`) y las pruebas (`tests/`).
 
----
+## Pruebas
 
-## 🆘 Problemas comunes
+Las pruebas automáticas están en la carpeta local `tests/`, que no se publica porque usa datos reales del equipo. Se hacen con Playwright y ejecutan el Apps Script real en Node contra una Sheet simulada.
 
-### Live Server no se abre
-```
-1. Instala Live Server (Ctrl+Shift+X)
-2. Click derecho en index.html
-3. Si falta opción "Open with Live Server":
-   - Recargar VS Code (Ctrl+Shift+P → reload)
-   - O click en "Go Live" (abajo a la derecha)
+```bash
+cd tests
+npm install
+npx playwright install chromium
+cd .. && python3 -m http.server 8783 &     # servidor local que usan las pruebas
+cd tests && PORT=8783 node test_acceso.js
 ```
 
-### Los cambios no se reflejan
-```
-1. Presiona F5 en navegador (refresh)
-2. Ctrl+Shift+Delete (borrar caché)
-3. Cierra Live Server y reabre
-```
+| Archivo | Qué prueba |
+|---|---|
+| `test_script.js` | El candado del Apps Script: qué recibe cada rol, PIN, bloqueos |
+| `test_acceso.js` | Entrada, salida, reintentos, carga inicial y encabezado |
+| `test_ajustes.js` | El panel de Ajustes |
+| `test_partido.js` | Partido en vivo: reloj, jugadas, cambios, sugerencias |
+| `test_jugados.js` | Partidos terminados |
+| `test_regresion.js` | Todas las solapas en escritorio y celular, y texto con etiquetas HTML |
+| `test_icono.js` | Ícono de la app y manifiesto |
 
-### Error en consola "Chart is not defined"
-```
-Significa que Chart.js no cargó del CDN
-Solución:
-- Verifica tu conexión a internet
-- Abre DevTools → Network → busca "chart.min.js"
-- Si no está, error de CDN (espera minutos)
-```
+Si `CHROME_PATH` está definido se usa ese navegador; si no, el de Playwright.
 
-### localStorage vacío después de F5
-```
-Normal si usas navegación privada/incógnito
-Solución: Abre en navegación normal
-```
+## Hacia dónde va
 
----
-
-## 📝 Checklist antes de publicar cambios
-
-- [ ] F12 → Console: sin errores rojos
-- [ ] Probaste todos los 3 tabs (Evaluador, Formación, Sincronizar)
-- [ ] Agregaste una jugadora y guardaste ✓
-- [ ] Arrastraste jugadora al campo ✓
-- [ ] Exportaste a CSV ✓
-- [ ] Probaste en mobile (F12 → responsive)
-- [ ] Código formateado (Shift+Alt+F)
-
----
-
-## 🎯 Resumen
-
-**Para editar DTCommander en VS Code:**
-
-1. Abre proyecto: `code ~/projects/dtcomander`
-2. Instala "Live Server"
-3. Click derecho en `index.html` → "Open with Live Server"
-4. Edita archivos (CSS, JS, HTML)
-5. Cambios aparecen automáticamente
-6. F12 para debuggear
-7. Listo
-
----
-
-**Versión:** 1.0  
-**Última actualización:** Septiembre 2026  
-**Para:** Jero en VS Code 🛠️
+- **Firebase.** El plan es migrar a Firebase (login real, base de datos por equipo y reglas de seguridad por rol) para que otros DT puedan usar la app con su propio equipo y para evitar la lentitud del Apps Script. Antes de arrancar se planifica; lo que hay en el Apps Script (filtros por rol, PIN con bloqueo) se reescribiría allá.
+- **Pendiente de interfaz.** Vista de jugadora con cartas estilo FIFA y evolución "solo lo que subió"; estadística por jugadora; dibujar tácticas sobre la cancha del partido.
