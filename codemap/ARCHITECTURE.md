@@ -7,7 +7,8 @@ formación del equipo en un campo visual (con un historial de partidos,
 cada uno con hasta 3 planes/tableros independientes), dibuje jugadas en
 un tablero táctico libre (flechas, lápiz, texto; se guardan con nombre y
 se exportan como imagen), simule esas jugadas animadas en fases (con grilla de casilleros, textos,
-zonas y video MP4; si la pelota entra a un arco es gol y la jugada termina), y planifique
+zonas y video MP4; si la pelota entra a un arco es gol y la jugada termina), lleve el partido en vivo desde Formación (reloj,
+marcador, jugadas y cambios con su minuto), y planifique
 entrenamientos con una rúbrica de evaluación manual — todo sincronizado
 automáticamente contra una Google Sheet.
 
@@ -23,6 +24,7 @@ graph LR
     HTML --> TacticaJS["js/tactica.js"]
     HTML --> SimMediaJS["js/simulacion-media.js"]
     HTML --> SimJS["js/simulacion.js"]
+    HTML --> PartidoJS["js/partido.js"]
 
     AuthJS -->|"tapa/destapa #appRoot"| LocalStorage["localStorage"]
 
@@ -32,6 +34,7 @@ graph LR
     TacticaJS -->|"usa state y saveState()"| AppJS
     SimJS -->|"usa state y saveState()"| AppJS
     SimJS -->|"dibuja y graba video"| SimMediaJS
+    PartidoJS -->|"usa state, saveState() y la formación activa"| AppJS
 
     SheetsJS -->|"fetch GET/POST"| WebApp["Google Apps Script (Web App)"]
     WebApp -->|"lee/escribe"| Sheet["Google Sheet del usuario"]
@@ -62,7 +65,9 @@ Google — no hay ningún servidor intermedio propio.
    aprieta "Guardar evaluación"), consulta su progreso (pestaña Jugadora,
    de solo lectura), arma la cancha (pestaña Formación: elige un
    partido del historial, un Plan A/B/C dentro de ese partido, y una
-   forma táctica dentro de ese plan, y arrastra jugadoras), dibuja una
+   forma táctica dentro de ese plan, y arrastra jugadoras; durante el partido
+   usa la barra "En vivo" de esa misma pestaña para el reloj, el marcador, las
+   jugadas y los cambios), dibuja una
    jugada en el tablero de la pestaña Táctica (se guarda con nombre y se
    puede exportar como imagen), arma una simulación animada por fases en
    la pestaña Simulación (se descarga como video MP4), o registra
@@ -92,6 +97,7 @@ Google — no hay ningún servidor intermedio propio.
 - [js/simulacion.md](js/simulacion.md) — pestaña Simulación: jugada animada en fases (pelota pegada, notas, tiempos, jugadas de ejemplo), historial y video MP4
 - [archivo/secuencia/LEEME.md](../archivo/secuencia/LEEME.md) — solapa Secuencia archivada (se probó y no se eligió): qué era, qué quedó en la app y cómo reactivarla
 - [js/simulacion-media.md](js/simulacion-media.md) — dibujo de la cancha (SVG y canvas) y grabación de video
+- [js/partido.md](js/partido.md) — barra "En vivo" de Formación: reloj del partido, marcador, jugadas (goles, jugadas de gol y peligrosas) y cambios con su minuto
 - [js/tactica.md](js/tactica.md) — pestaña Táctica: tablero libre (jugadoras, rivales, flechas, lápiz, texto), historial de tácticas y exportar imagen
 - [js/sheets-integration.md](js/sheets-integration.md) — sync automática con Sheets
 - [data/google-apps-script.md](data/google-apps-script.md) — backend en Apps Script
