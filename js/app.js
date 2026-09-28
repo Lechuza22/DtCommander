@@ -713,7 +713,9 @@ function loadLocal() {
   }
 }
 
-let state = loadLocal() || defaultState();
+// Si no hay nada guardado en este dispositivo se arranca con datos de ejemplo hasta que lleguen los reales (ver el cartel de carga).
+let sinDatosLocales = false;
+let state = loadLocal() || ((sinDatosLocales = true), defaultState());
 let currentPlayer = Object.keys(state.players)[0] || null;
 let radarChart = null;
 
@@ -778,15 +780,22 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   if (window.SheetsSync) {
+    const cargando = document.getElementById('cargandoAviso');
+    if (cargando && sinDatosLocales && window.Acceso && window.Acceso.rol) cargando.hidden = false;
     try {
       const remote = await window.SheetsSync.hydrate();
       if (remote && remote.players && Object.keys(remote.players).length) {
         state = normalizeRemoteState(remote);
         currentPlayer = Object.keys(state.players)[0] || null;
         renderAll();
+        // Lo que trae Google también queda guardado en el dispositivo (sin volver a mandarlo): así la próxima vez la app abre
+        // al instante con los datos reales, en vez de mostrar el plantel de ejemplo hasta que Google conteste, que puede tardar.
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (err) { /* localStorage no disponible */ }
       }
     } catch (err) {
       console.error('Error al sincronizar con Google Sheets:', err);
+    } finally {
+      if (cargando) cargando.hidden = true;
     }
   }
 });
