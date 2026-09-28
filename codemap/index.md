@@ -81,7 +81,7 @@ flowchart TD
   solapas) vive **dentro** de `#appRoot`.
 - **La pantalla de entrada** (`#loginGate`) tiene `#loginRol` (DT / soporte; jugadora se agrega cuando esté su
   vista), `#loginNombre` (solo para soporte y jugadoras), `#loginClave`, `#loginBtn` y `#loginError`.
-  **`#rolChip`** (en el header) dice quién entró, **`#ajustesBtn`** (el engranaje, solo para el DT) abre el diálogo **`#ajustes`** de [js/ajustes.js](js/ajustes.md) (`#ajustesCerrar`, las pestañas `.ajustes-tab`, `#accesosJugadoras`, `#accesosSoporte`, `#accesoSoporteForm`, `#permisosTabla`), y **`#candadoAviso`** es el cartel amarillo que ve el DT mientras el
+  **`#rolChip`** (en el header, junto al título y al punto de estado) dice quién entró. **`.header-acciones`** agrupa, en la esquina superior derecha, **`#ajustesBtn`** (el engranaje, un dibujo SVG; solo para el DT) y **`#logoutBtn`** (⏻); el engranaje abre el diálogo **`#ajustes`** de [js/ajustes.js](js/ajustes.md) (`#ajustesCerrar`, las pestañas `.ajustes-tab`, `#accesosJugadoras`, `#accesosSoporte`, `#accesoSoporteForm`, `#permisosTabla`), y **`#candadoAviso`** es el cartel amarillo que ve el DT mientras el
   Apps Script no tenga el candado activado. El botón **`#logoutBtn`** pide dos toques.
 - **`#groupTabs`** y **`#subTabs`** son la navegación en dos niveles. Arriba (`.tab-btn`,
   con `data-group`) están los tres grupos: Equipo (Evaluador, Jugadora, Entrenamiento),
