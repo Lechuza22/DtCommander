@@ -92,10 +92,12 @@ Google — no hay ningún servidor intermedio propio.
 
 ## Otros archivos
 
-- `images/` — assets sueltos (por ejemplo escudos) que el usuario va
-  agregando. No hay ningún código que los use todavía; cuando se
-  conecte alguno a la UI (por ejemplo como logo del header), se
-  documenta acá.
+- `images/` — las imágenes del proyecto; el usuario va agregando. `images/icono/`
+  tiene el ícono de la app (una pelota ⚽) en varios tamaños: pestaña del
+  navegador, pantalla de inicio del celular y app instalable (junto con
+  `favicon.ico` y `manifest.webmanifest`, en la raíz, y los enlaces del
+  `<head>` de [index.html](index.md)). `images/originales/` guarda las capturas
+  de origen y **no se publica**.
 
 ## Índice de módulos
 
