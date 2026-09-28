@@ -203,7 +203,10 @@ llevaría cualquier campo que no conozca. Además el merge por `updatedAt` es lo
 que protege a un partido anotado en la cancha sin señal: si al abrir la app la
 Sheet trae una copia vieja, gana lo local. Los items son tres (`meta`, `event`
 y `sub`); `sanitizeLogItems` siempre devuelve exactamente un `meta`, descarta
-jugadas y cambios inválidos, limita la cantidad (`MAX_LOG_EVENTS` 300,
+jugadas y cambios inválidos (los tipos de jugada válidos están en
+`MATCH_EVENT_KINDS`; falta, tiro libre, córner, lateral y penal, los de
+`MATCH_SIDE_KINDS`, llevan `side` = `for` o `against`, y a las demás se les
+saca), limita la cantidad (`MAX_LOG_EVENTS` 300,
 `MAX_LOG_SUBS` 60), acota los segundos, deja la cancha del partido (`field`, con
 `sanitizeLiveField`: hasta 30 jugadoras dentro de los límites de la cancha) y
 corrige una fase a la que le faltan sus marcas de tiempo. Eliminar un partido
@@ -305,14 +308,14 @@ cosa (no confundir con las solapas de Plan A/B/C, que son internas a Formación)
 |---|---|
 | **Equipo**: conocer y desarrollar a las jugadoras | Evaluador, Jugadora, Entrenamiento |
 | **Planificar**: lo de antes del partido | Formación, Táctica, Simulación |
-| **Partido**: durante y después | Partido (En vivo) |
+| **Partido**: durante y después | En vivo (`panel-partido`), Jugados (`panel-jugados`: los partidos ya anotados) |
 
 `TAB_GROUPS` dice qué paneles tiene cada grupo. `showTab(panelId)` es lo único que
 cambia de solapa: marca el grupo activo, muestra solo los botones de ese grupo en
 la segunda fila (`hidden` en los demás; y oculta la fila entera si el grupo tiene
 una sola solapa), activa el panel y llama a su `render` (`renderFormacion`,
 `renderDashboard`, `renderEntrenamiento`, `renderTactica`, `renderSimulacion`,
-`renderPartido`). Tocar un grupo abre la **última solapa que se usaba** en él
+`renderPartido`, `renderJugados`). Tocar un grupo abre la **última solapa que se usaba** en él
 (`lastTabOfGroup`). Cada solapa sigue siendo un panel independiente: agrupar
 cambió la navegación, no la lógica de ninguna. Al elegir un botón se lo deja
 visible con `scrollIntoView` por si la barra se desplaza en pantallas chicas.
@@ -461,9 +464,16 @@ y si Portería cuenta). Los valores pasan
 por `escapeHtml` antes de entrar a `innerHTML`: el apodo es texto libre
 y la Sheet se puede editar desde afuera de la app, así que sin escapar
 un apodo con etiquetas HTML se ejecutaría en el navegador de quien mira
-el dashboard. (Ojo: otros textos libres de la app —notas de la rúbrica,
-etiquetas de evaluación, rival del partido— todavía se insertan sin
-escapar; no se tocaron en este cambio.)
+el dashboard. Lo mismo vale para el resto de los textos libres que entran
+por `innerHTML`: los nombres de jugadoras en los desplegables (Evaluador,
+Jugadora y la rúbrica), el rival del partido, las etiquetas del historial (la
+línea "Comparado con…" y la lista de evaluaciones), las fechas y las notas y la
+jugadora de la rúbrica. Antes de esta corrección esos no se
+escapaban, y como la URL del Apps Script es pública y acepta escrituras,
+alguien podía dejar una etiqueta HTML en la Sheet y se ejecutaba al abrir la
+app; hay una prueba que carga datos así y comprueba que no se ejecuta nada. La
+regla para código nuevo: todo texto que venga de los datos pasa por
+`escapeHtml` (o se asigna con `textContent`).
 
 ### `ATTR_VALUE_COLORS` / `colorForAttrValue(value)` / `renderDashboardAttrsGrid(player)`
 
