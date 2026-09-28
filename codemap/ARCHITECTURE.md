@@ -102,7 +102,7 @@ Google — no hay ningún servidor intermedio propio.
 - [archivo/secuencia/LEEME.md](../archivo/secuencia/LEEME.md) — solapa Secuencia archivada (se probó y no se eligió): qué era, qué quedó en la app y cómo reactivarla
 - [js/simulacion-media.md](js/simulacion-media.md) — dibujo de la cancha (SVG y canvas) y grabación de video
 - [js/partido.md](js/partido.md) — solapa En vivo: reloj del partido, marcador, jugadas (goles, jugadas de gol y peligrosas, faltas, tiros libres, córners, laterales y penales), cancha propia (copia de la alineación de Formación o de una táctica) y cambios con su minuto
-- [js/jugados.md](js/jugados.md) — solapa Jugados: los partidos ya anotados, con su resultado, resumen a favor / en contra y línea de tiempo
+- [js/jugados.md](js/jugados.md) — solapa Jugados: los partidos ya terminados, con su resultado, resumen a favor / en contra y línea de tiempo
 - [js/tactica.md](js/tactica.md) — pestaña Táctica: tablero libre (jugadoras, rivales, flechas, lápiz, texto), historial de tácticas y exportar imagen
 - [js/sheets-integration.md](js/sheets-integration.md) — sync automática con Sheets
 - [data/google-apps-script.md](data/google-apps-script.md) — backend en Apps Script
