@@ -74,6 +74,21 @@ sea fácil ubicar qué tocar.
   sin eso una columna de la grilla no se achica por debajo de su contenido y la
   fila de pestañas de fase (que no se puede comprimir) ensanchaba toda la
   página en celulares.
+- **Partido en vivo**: `.live-bar` (la barra de arriba de Formación: `position:
+  sticky; top: 0` para que quede a la vista mientras se mira la cancha, con
+  `.live-running` cuando el reloj corre), `.live-top` con `.live-clock-box` /
+  `.live-clock` / `.live-phase` / `.live-score` / `.live-main-btn` (el botón que
+  avanza la fase; `.live-armed` cuando pide el segundo toque para terminar un
+  tiempo), `.live-events` con `.live-ev-btn` (los cuatro botones de jugada, en una
+  grilla de 4 columnas y con color propio cada uno; miden al menos 46 px de alto
+  para tocarlos con el pulgar), `.live-toast` (el aviso breve: **flota** justo
+  debajo de la barra en vez de agrandarla, porque si empujara el contenido la
+  cancha se movería cada vez que se anota una jugada), `.live-chips` /
+  `.live-chip` (los cambios por hacer, en una fila que se desliza de costado), y
+  para el detalle de abajo `.live-config`, `.live-list` y `.live-row` (una fila por
+  jugada o cambio, con el borde izquierdo del color de su tipo). En pantallas de
+  hasta 480 px se achica el reloj y se ocultan los nombres de los equipos para que
+  reloj, marcador y botón entren en una sola fila.
 - **Formularios inline** (alta de jugadora, de partido, y de evaluación):
   `.add-player-form`, reutilizado por `#addPlayerForm`, `#addMatchForm` y
   `#saveEvalForm` — incluye estilos tanto para `input[type=text]` como
