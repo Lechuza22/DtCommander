@@ -289,6 +289,14 @@ el plan activo dentro de ese partido. `removePlayerFromAllBoards()`
 recorre **todos** los partidos, planes y formas tácticas para sacar a una
 jugadora eliminada de cualquier cancha donde estuviera ubicada.
 
+### Arranque: `sinDatosLocales` y el cartel de carga
+
+Si no hay nada guardado en el dispositivo (`loadLocal()` devuelve `null`) `state` arranca con el plantel de ejemplo
+(`sinDatosLocales = true`) y se muestra el cartel `#cargandoAviso` ("Cargando los datos del equipo desde Google…") hasta que
+`hydrate()` termine, bien o mal. **Lo que trae Google se guarda también en `localStorage`** (con `STORAGE_KEY`, sin llamar a
+`saveState()` para no mandarlo de vuelta): antes solo se guardaba lo que se editaba, así que en un navegador donde solo se miraba,
+cada vez que se abría la app aparecía el plantel de ejemplo hasta que Google contestara, y Google a veces tarda casi un minuto.
+
 ### `normalizeRemoteState(remote)`
 
 Adapta la respuesta de `hydrate()` a la forma que espera la app,
