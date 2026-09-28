@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-  <div id="loginGate" class="login-gate">
+  <div id="loginGate" class="login-gate" hidden>
     <div class="login-card">
       <h1>⚽ DTCommander</h1>
       <p class="hint">Ingresá para continuar</p>
@@ -25,6 +25,7 @@
   <header>
     <h1>⚽ DTCommander</h1>
     <span id="rolChip" class="rol-chip" hidden></span>
+    <button id="ajustesBtn" class="btn-logout btn-ajustes" title="Ajustes" aria-label="Ajustes" hidden>⚙</button>
     <button id="logoutBtn" class="btn-logout" title="Cerrar sesión (tocá dos veces)">⏻</button>
     <span id="syncStatus" class="sync-status sync-local" title="Iniciando…">●</span>
   </header>
@@ -636,6 +637,88 @@
     </section>
 
   </main>
+
+  <!-- ===== AJUSTES (solo el DT): accesos, política de datos y permisos ===== -->
+  <div id="ajustes" class="ajustes" role="dialog" aria-modal="true" aria-labelledby="ajustesTitulo" hidden>
+    <div class="ajustes-panel">
+      <div class="ajustes-head">
+        <h2 id="ajustesTitulo">Ajustes</h2>
+        <button type="button" id="ajustesCerrar" class="btn btn-secondary btn-small" aria-label="Cerrar Ajustes">✕</button>
+      </div>
+      <div class="ajustes-tabs" role="tablist">
+        <button type="button" class="ajustes-tab active" role="tab" data-pestana="accesos">Accesos</button>
+        <button type="button" class="ajustes-tab" role="tab" data-pestana="politica">Política de datos</button>
+        <button type="button" class="ajustes-tab" role="tab" data-pestana="permisos">Permisos</button>
+      </div>
+
+      <div class="ajustes-body">
+        <section id="ajustes-accesos" data-pestana="accesos">
+          <p id="ajustesAviso" class="hint" hidden></p>
+          <span id="ajustesError" class="form-error" role="alert"></span>
+
+          <h3>Jugadoras</h3>
+          <p class="hint">Cada jugadora entra con su nombre y un PIN de 4 dígitos. Cambiarlo o desactivarlo la deja afuera al instante. Podrán entrar cuando esté lista la vista de jugadora.</p>
+          <div id="accesosJugadoras" class="accesos-lista"></div>
+
+          <h3>Equipo técnico y soporte</h3>
+          <p class="hint">Ven y editan todo, menos estos Ajustes. Entran con su nombre y una clave larga.</p>
+          <div id="accesosSoporte" class="accesos-lista"></div>
+          <form id="accesoSoporteForm" class="add-player-form">
+            <input type="text" id="accesoSoporteNombre" placeholder="Nombre de la persona" maxlength="60" autocomplete="off">
+            <button type="submit" class="btn">Agregar</button>
+          </form>
+        </section>
+
+        <section id="ajustes-politica" data-pestana="politica" class="politica" hidden>
+          <p><strong>Borrador:</strong> este texto es una base para que lo revises y lo adaptes. No es asesoramiento legal.</p>
+          <h3>Qué es esto</h3>
+          <p>DTCommander es una herramienta libre y gratuita. No hay una empresa detrás guardando datos: los datos de tu equipo viven en tu propia Google Sheet y en tus dispositivos, y vos, como DT, decidís qué se carga y quién lo ve.</p>
+          <h3>Qué datos se guardan</h3>
+          <ul>
+            <li>De cada jugadora: nombre, apodo, edad, altura, pie dominante y posiciones.</li>
+            <li>Sus evaluaciones y su historial de evolución.</li>
+            <li>Las rúbricas y las observaciones de entrenamiento.</li>
+            <li>Los partidos: formaciones, tácticas, jugadas, cambios y resultados.</li>
+          </ul>
+          <p>Muchas jugadoras son menores de edad: son datos que hay que cuidar.</p>
+          <h3>Dónde se guardan</h3>
+          <p>En la Google Sheet de quien administra el equipo y en una copia dentro del navegador de cada dispositivo donde alguien entró. La página de la app es pública, pero no contiene datos del equipo: solo se entregan a quien entra con una clave.</p>
+          <h3>Quién ve qué</h3>
+          <ul>
+            <li><strong>DT:</strong> todo, y administra los accesos.</li>
+            <li><strong>Equipo técnico y soporte:</strong> ven y editan todo, menos los accesos y estos Ajustes.</li>
+            <li><strong>Jugadora:</strong> solo mira. Ve su ficha completa y su evolución; de sus compañeras, solo nombre, posición y atributos; la formación, las tácticas y los partidos terminados (sin las notas del DT). Nunca ve entrenamientos ni observaciones.</li>
+          </ul>
+          <h3>Claves y accesos</h3>
+          <ul>
+            <li>Cada persona tiene su propia clave. El DT puede cambiarla o desactivarla cuando quiera.</li>
+            <li>Tras 5 intentos fallidos con un PIN, ese nombre se bloquea 30 minutos.</li>
+            <li>Un PIN de 4 dígitos no prueba que sea ella: puede compartirlo. Por eso una jugadora solo puede mirar, nunca cambiar nada.</li>
+            <li>Quien pueda editar la Google Sheet ve todas las claves: conviene no compartirla.</li>
+          </ul>
+          <h3>Buenas prácticas</h3>
+          <ul>
+            <li>Pedí autorización a las familias antes de cargar datos de las chicas, y para cualquier foto.</li>
+            <li>Cargá solo lo que necesitás para entrenar y armar el equipo.</li>
+            <li>Cerrá la sesión en dispositivos compartidos.</li>
+            <li>No mandes capturas con datos de las chicas a grupos abiertos.</li>
+            <li>Si un PIN se filtra, generá uno nuevo desde Accesos.</li>
+          </ul>
+          <h3>Conservación y borrado</h3>
+          <p>Los datos se conservan mientras el DT los mantenga. Si una jugadora deja el equipo, o si su familia lo pide, sacala del plantel (Evaluador → Eliminar), quitale el acceso desde acá y revisá también las hojas Historial y Entrenamientos de la Sheet.</p>
+          <h3>Antes de usarlo con otros equipos</h3>
+          <p>En Argentina rige la Ley 25.326 de Protección de los Datos Personales. Conviene que este texto lo revise alguien que la conozca, y que cada DT sea responsable de los datos de su equipo.</p>
+        </section>
+
+        <section id="ajustes-permisos" data-pestana="permisos" hidden>
+          <p class="hint">Qué puede hacer cada rol en cada solapa. Los roles son fijos por ahora.</p>
+          <div class="permisos-scroll">
+            <table id="permisosTabla" class="permisos-tabla"></table>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
   </div>
 
   <script src="js/acceso.js"></script>
@@ -647,5 +730,6 @@
   <script src="js/simulacion.js"></script>
   <script src="js/partido.js"></script>
   <script src="js/jugados.js"></script>
+  <script src="js/ajustes.js"></script>
 </body>
 </html>
