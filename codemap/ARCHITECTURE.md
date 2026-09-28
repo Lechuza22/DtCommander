@@ -11,14 +11,14 @@ zonas y video MP4; si la pelota entra a un arco es gol y la jugada termina), lle
 (reloj, marcador, jugadas con su minuto, cambios y una cancha propia), revise
 después los partidos ya jugados (resumen y línea de tiempo), y planifique
 entrenamientos con una rúbrica de evaluación manual — todo sincronizado
-automáticamente contra una Google Sheet.
+automáticamente contra una Google Sheet, cuyo acceso protege una clave (el script solo entrega y acepta lo que le corresponde a cada rol).
 
 ## Diagrama de módulos
 
 ```mermaid
 graph LR
     HTML["index.html"] --> CSS["css/styles.css"]
-    HTML --> AuthJS["js/auth.js"]
+    HTML --> AccesoJS["js/acceso.js"]
     HTML --> ChartJS["Chart.js (CDN)"]
     HTML --> SheetsJS["js/sheets-integration.js"]
     HTML --> AppJS["js/app.js"]
@@ -28,7 +28,8 @@ graph LR
     HTML --> PartidoJS["js/partido.js"]
     HTML --> JugadosJS["js/jugados.js"]
 
-    AuthJS -->|"tapa/destapa #appRoot"| LocalStorage["localStorage"]
+    AccesoJS -->|"guarda la sesión; separa los datos del equipo y de las jugadoras"| LocalStorage["localStorage"]
+    AccesoJS -->|"comprueba la clave con verificar()"| SheetsJS
 
     AppJS -->|"render radar"| ChartJS
     AppJS -->|"leer/escribir"| LocalStorage["localStorage"]
@@ -54,11 +55,12 @@ Google — no hay ningún servidor intermedio propio.
 
 ## Flujo típico de una sesión
 
-0. Se abre `index.html`. Antes que nada, `js/auth.js` decide si mostrar
-   `#loginGate` (pantalla de login) o `#appRoot` (la app entera),
-   según si ese navegador ya tiene la marca de sesión guardada. Es una
-   pantalla disuasoria, no una autenticación real — ver
-   [js/auth.md](js/auth.md).
+0. Se abre `index.html`. Antes que nada, `js/acceso.js` decide si mostrar
+   `#loginGate` (pantalla de entrada) o `#appRoot` (la app entera),
+   según si ese navegador ya tiene una sesión guardada (DT, soporte o
+   jugadora). La clave no está escrita en el código: cada pedido la lleva
+   al Apps Script, que es el que decide qué devuelve y quién puede
+   escribir — ver [js/acceso.md](js/acceso.md).
 1. Con `#appRoot` visible: `js/app.js` carga el estado desde `localStorage`
    (o crea el estado por defecto con Ine y Agos si es la primera vez).
 2. En paralelo, le pide a `js/sheets-integration.js` (`hydrate()`) los
@@ -96,7 +98,7 @@ Google — no hay ningún servidor intermedio propio.
 
 - [index.md](index.md) — estructura HTML
 - [css/styles.md](css/styles.md) — estilos
-- [js/auth.md](js/auth.md) — pantalla de login (disuasoria, no real)
+- [js/acceso.md](js/acceso.md) — quién entró (DT, soporte o jugadora) y qué puede hacer; la validación real la hace el Apps Script
 - [js/app.md](js/app.md) — estado, Evaluador, Jugadora, Formación (drag & drop), Entrenamiento
 - [js/simulacion.md](js/simulacion.md) — pestaña Simulación: jugada animada en fases (pelota pegada, notas, tiempos, jugadas de ejemplo), historial y video MP4
 - [archivo/secuencia/LEEME.md](../archivo/secuencia/LEEME.md) — solapa Secuencia archivada (se probó y no se eligió): qué era, qué quedó en la app y cómo reactivarla
