@@ -82,6 +82,13 @@ sea fácil ubicar qué tocar.
   grupo elegido, con botones en forma de píldora. La fila tiene el mismo fondo que el
   grupo activo, así queda como una continuación de él; se desplaza de costado en pantallas
   chicas y se oculta si el grupo tiene una sola solapa.
+- **Ajustes** (solo el DT): `.ajustes` (la capa oscura que tapa la app; `body.con-ajustes` frena el desplazamiento de
+  atrás), `.ajustes-panel` (la caja blanca, a pantalla completa en celular), `.ajustes-head`, `.ajustes-tabs` /
+  `.ajustes-tab` (con `.active`; ambas filas llevan `flex: 0 0 auto` porque si no se aprietan cuando el contenido es largo),
+  `.ajustes-body` (la única parte que se desplaza), `.accesos-lista` / `.acceso-fila` (con `.inactivo` tachada) /
+  `.acceso-quien` / `.acceso-clave` / `.acceso-acciones` (los botones de cada fila; `.armado` en rojo pide confirmar),
+  `.politica` (el texto) y `.permisos-tabla` (los niveles `nivel-editar` / `nivel-ver` / `nivel-nada`). `.btn-ajustes` es el
+  engranaje del encabezado, con el mismo estilo que el ⏻.
 - **Solapa Jugados**: `.played-list` / `.played-item` (un botón por partido, con el borde
   izquierdo verde si ganamos, rojo si perdimos, y gris si empatamos, y
   `.selected` el elegido), `.played-head` / `.played-score` (encabezado del detalle con el
