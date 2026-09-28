@@ -19,6 +19,21 @@
   const ROLES_QUE_EDITAN = ['dt', 'soporte'];
   const NOMBRES_ROL = { dt: 'Soy el DT', soporte: 'Soy del equipo técnico / soporte', jugadora: 'Soy jugadora' };
 
+  // Qué puede hacer cada rol en cada solapa: 'editar' (ve y edita), 'ver' (solo mira) o 'nada' (ni la ve).
+  // Es la única tabla: la usa la pantalla de Ajustes → Permisos y la vista de solo lectura de las jugadoras.
+  // Lo que de verdad se entrega o se acepta lo decide el Apps Script (filtrarEstadoParaRol_ y doPost); esto es lo mismo, dicho en la pantalla.
+  const PERMISOS = [
+    { panel: 'panel-evaluador', nombre: 'Evaluador', dt: 'editar', soporte: 'editar', jugadora: 'nada' },
+    { panel: 'panel-jugadora', nombre: 'Jugadora', dt: 'editar', soporte: 'editar', jugadora: 'ver', nota: { jugadora: 'su ficha y su evolución' } },
+    { panel: 'panel-entrenamiento', nombre: 'Entrenamiento', dt: 'editar', soporte: 'editar', jugadora: 'nada' },
+    { panel: 'panel-formacion', nombre: 'Formación', dt: 'editar', soporte: 'editar', jugadora: 'ver' },
+    { panel: 'panel-tactica', nombre: 'Táctica', dt: 'editar', soporte: 'editar', jugadora: 'ver' },
+    { panel: 'panel-simulacion', nombre: 'Simulación', dt: 'editar', soporte: 'editar', jugadora: 'nada' },
+    { panel: 'panel-partido', nombre: 'Partido en vivo', dt: 'editar', soporte: 'editar', jugadora: 'nada' },
+    { panel: 'panel-jugados', nombre: 'Partidos jugados', dt: 'editar', soporte: 'editar', jugadora: 'ver', nota: { jugadora: 'solo terminados, sin las notas del DT' } },
+    { panel: 'ajustes', nombre: 'Ajustes y accesos', dt: 'editar', soporte: 'nada', jugadora: 'nada' }
+  ];
+
   function leerSesion() {
     try {
       const s = JSON.parse(localStorage.getItem(SESION_KEY) || 'null');
@@ -47,6 +62,11 @@
     nombre: sesion ? sesion.nombre : '',
     credenciales: () => (sesion ? { rol: sesion.rol, nombre: sesion.nombre, clave: sesion.clave } : null),
     puedeEditar: () => !!sesion && ROLES_QUE_EDITAN.includes(sesion.rol),
+    PERMISOS,
+    nivel(panel) {
+      const fila = PERMISOS.find(p => p.panel === panel);
+      return sesion && fila ? fila[sesion.rol] : 'nada';
+    },
     // Las jugadoras guardan sus datos aparte: nunca comparten lo guardado en el dispositivo con el DT.
     storageKey: () => (sesion && sesion.rol === 'jugadora' ? CACHE_JUGADORA : CACHE_EQUIPO),
 
@@ -97,6 +117,8 @@
         chip.hidden = false;
       }
       document.body.dataset.rol = sesion.rol;
+      const engranaje = $('ajustesBtn');
+      if (engranaje) engranaje.hidden = Acceso.nivel('ajustes') !== 'editar';
       const btn = $('logoutBtn');
       let armado = null;
       btn.addEventListener('click', () => {
