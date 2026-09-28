@@ -1,7 +1,7 @@
 # index.html
 
 El único documento HTML de la app: define la estructura (header, la
-navegación en dos niveles con siete solapas, formularios) que [js/app.js](js/app.md) rellena y manipula. No
+navegación en dos niveles con ocho solapas, formularios) que [js/app.js](js/app.md) rellena y manipula. No
 tiene lógica propia — es puro esqueleto con IDs y clases que el
 JavaScript busca por `document.getElementById` / `querySelectorAll`.
 
@@ -62,10 +62,13 @@ flowchart TD
     PanelEntrenamiento --> RubricForm["#openRubricBtn / #rubricForm / #rubricCriteria"]
     PanelEntrenamiento --> TrainingLog["#trainingLogList"]
 
-    PanelPartido["#panel-partido"] --> LiveBar["#liveBar (fija arriba): #liveClock / #livePhase / #liveScore / #livePhaseBtn / #liveEventButtons / #liveToast / #liveSubChips"]
+    PanelPartido["#panel-partido"] --> LiveBar["#liveBar (fija arriba): #liveClock / #livePhase / #liveScore / #livePhaseBtn / #liveEventButtons / #liveMoreButtons + #liveSidePicker (falta, tiro libre, córner, lateral y penal, con su "a favor / en contra") / #liveToast / #liveSubChips"]
     PanelPartido --> LiveSetup["#liveSetup (plegable): #liveMatchSelect / #liveAddMatchForm / #liveSourceKind / #liveSourcePlan / #liveSourceFormation / #liveSourceTactic / #liveBringBtn"]
     PanelPartido --> LiveField["#liveAvailable (banco) / #liveSuggestions (perfil y cambios sugeridos) / #matchField (svg, lo dibuja el JS)"]
     PanelPartido --> LiveDetails["#liveDetails (debajo de la cancha): #liveDuration / #liveAdjust / #liveResetBtn / #liveSubForm / #liveSubList / #liveEventList"]
+
+    PanelJugados["#panel-jugados"] --> PlayedList["#playedList (un botón por partido jugado)"]
+    PanelJugados --> PlayedDetail["#playedDetail: #playedTitle / #playedScore / #playedOpenBtn / #playedTable / #playedScorers / #playedTimeline / #playedLineup"]
 ```
 
 ## Notas de estructura
@@ -74,14 +77,14 @@ flowchart TD
   anidados. `#appRoot` arranca con `hidden` puesto directamente en el
   HTML (no por JS) para que no haya un instante de "flash" de la app
   antes de que [js/auth.js](js/auth.md) decida si mostrarla. Todo lo
-  que describe el resto de este documento (header, tabs, las siete
+  que describe el resto de este documento (header, tabs, las ocho
   solapas) vive **dentro** de `#appRoot`.
 - **`#groupTabs`** y **`#subTabs`** son la navegación en dos niveles. Arriba (`.tab-btn`,
   con `data-group`) están los tres grupos: Equipo (Evaluador, Jugadora, Entrenamiento),
-  Planificar (Formación, Táctica, Simulación) y Partido. Abajo (`.subtab-btn`, con
-  `data-group` y `data-tab`) van los botones de todas las solapas y `showTab()` deja
-  visibles solo los del grupo elegido (`hidden` en el resto); si el grupo tiene una
-  sola solapa, como Partido, la fila se oculta entera. Cada `<section class="tab-panel">`
+  Planificar (Formación, Táctica, Simulación) y Partido (En vivo, Jugados). Abajo
+  (`.subtab-btn`, con `data-group` y `data-tab`) van los botones de todas las solapas y
+  `showTab()` deja visibles solo los del grupo elegido (`hidden` en el resto); si un grupo
+  tuviera una sola solapa, la fila se oculta entera. Cada `<section class="tab-panel">`
   sigue siendo independiente.
 - **`#syncStatus`**: un punto (`●`) en el header cuyo color y `title`
   controla por completo [js/sheets-integration.js](js/sheets-integration.md)
@@ -126,9 +129,10 @@ flowchart TD
   `[hidden] { display: none !important; }` cerca del principio — sin
   ella, los formularios de arriba quedaban siempre visibles aunque el
   atributo `hidden` estuviera bien puesto (bug real que hubo en la app).
-- Carga ocho `<script>` al final del `<body>`, en este orden:
+- Carga nueve `<script>` al final del `<body>`, en este orden:
   `auth.js`, Chart.js (CDN), `sheets-integration.js`, `app.js`, `tactica.js`,
-  `simulacion-media.js`, `simulacion.js`, `partido.js`.
+  `simulacion-media.js`, `simulacion.js`, `partido.js`, `jugados.js`
+  (`jugados.js` va después de `partido.js` porque usa `window.PartidoUtil`).
   `auth.js` va primero porque decide si el resto siquiera se ve; el
   resto del orden importa porque `app.js` usa `window.SheetsSync` y
   `Chart` al arrancar. `tactica.js` va después de `app.js` porque usa sus
@@ -179,6 +183,7 @@ flowchart TD
 | [js/tactica.js](js/tactica.md) | Pestaña Táctica (tablero libre) |
 | [js/simulacion.js](js/simulacion.md) | Pestaña Simulación (jugada animada en fases) |
 | [js/simulacion-media.js](js/simulacion-media.md) | Dibujo (SVG y canvas) y grabación de video |
-| [js/partido.js](js/partido.md) | Barra "En vivo" de Formación: reloj, marcador, jugadas y cambios |
+| [js/partido.js](js/partido.md) | Solapa En vivo: reloj, marcador, jugadas, cancha propia y cambios |
+| [js/jugados.js](js/jugados.md) | Solapa Jugados: los partidos ya anotados, con su resumen y línea de tiempo |
 
 Ver también [GLOSSARY.md](GLOSSARY.md).
