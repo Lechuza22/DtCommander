@@ -2,13 +2,29 @@
 // DTCommander — solapa Partido (en vivo)
 //
 // Reloj del partido (1.er tiempo, entretiempo, 2.º tiempo, final), marcador,
-// jugadas de un toque (gol nuestro, gol rival, jugada de gol, jugada peligrosa),
+// jugadas de un toque (gol nuestro, gol rival, jugada de gol, jugada peligrosa; y falta,
+// tiro libre, córner, lateral y penal, que preguntan "a favor / en contra" al tocarlas),
 // la cancha del partido (una copia de la alineación que se trae de Formación o de
 // una táctica guardada) y los cambios (por hacer -> hecho, con su minuto). Todo se
 // guarda en state.matchLogs (ver app.js) y viaja por la misma sincronización.
 // ==================================================================
 (function () {
-  const KIND_LABELS = { goal: 'Gol nuestro', goalRival: 'Gol rival', chance: 'Jugada de gol', danger: 'Jugada peligrosa' };
+  const KIND_LABELS = {
+    goal: 'Gol nuestro', goalRival: 'Gol rival', chance: 'Jugada de gol', danger: 'Jugada peligrosa',
+    foul: 'Falta', freeKick: 'Tiro libre', corner: 'Córner', throwIn: 'Lateral', penalty: 'Penal'
+  };
+  const SIDE_LABELS = { for: 'a favor', against: 'en contra' };
+  // Las jugadas que llevan lado se nombran con él: "Falta en contra", "Córner a favor".
+  const eventLabel = ev => (MATCH_SIDE_KINDS.includes(ev.kind) ? `${KIND_LABELS[ev.kind]} ${SIDE_LABELS[ev.side]}` : KIND_LABELS[ev.kind]);
+  // Qué se le pide en "quién" según la jugada y el lado (después de tocar el botón, abajo en la descripción).
+  const WHO_PROMPTS = {
+    foul: { for: 'Quién la recibió…', against: 'Quién la cometió…' },
+    freeKick: { for: 'Quién lo ejecutó…', against: 'Quién hizo la falta…' },
+    corner: { for: 'Quién lo ejecutó…', against: 'Jugadora involucrada…' },
+    throwIn: { for: 'Quién lo sacó…', against: 'Jugadora involucrada…' },
+    penalty: { for: 'Quién lo pateó…', against: 'Quién lo cometió…' }
+  };
+  const SIDE_ASK_MS = 8000; // si no se elige "a favor / en contra" en este tiempo, se cancela
   const PHASE_LABELS = { idle: 'Sin empezar', t1: '1.er tiempo', ht: 'Entretiempo', t2: '2.º tiempo', end: 'Final' };
   const PHASE_BUTTONS = {
     idle: 'Iniciar 1.er tiempo', t1: 'Fin del 1.er tiempo', ht: 'Iniciar 2.º tiempo', t2: 'Finalizar partido', end: 'Reabrir partido'
@@ -31,6 +47,8 @@
   let pinnedName = null;
   let hoverName = null;
   let suggestionsChart = null;
+  let pendingSide = null; // { kind, pos }: una jugada con lado que está esperando "a favor / en contra"
+  let sideTimer = null;
   const TAP_PX = 6; // menos que esto entre que se apoya y se suelta es un toque, no un arrastre
 
   const $ = id => document.getElementById(id);
@@ -247,19 +265,52 @@
   // ------------------------------------------------------------------
   // Acciones: jugadas
   // ------------------------------------------------------------------
-  function addEvent(kind) {
+  // side y atPos solo para las jugadas con lado: el momento es el del primer toque, no el de elegir el lado.
+  function addEvent(kind, side, atPos) {
     const rec = recordOf(true);
     const meta = metaOf(rec);
     if (rec.items.filter(i => i.type === 'event').length >= MAX_LOG_EVENTS) {
       showError('Ya hay demasiadas jugadas anotadas en este partido.');
       return;
     }
-    const pos = position(meta, Date.now());
-    rec.items.push({ id: newId('e'), type: 'event', kind, half: pos.half, sec: pos.sec, player: '', assist: '', note: '' });
+    const pos = atPos || position(meta, Date.now());
+    const ev = {
+      id: newId('e'), type: 'event', kind, side: MATCH_SIDE_KINDS.includes(kind) ? side : '',
+      half: pos.half, sec: pos.sec, player: '', assist: '', note: ''
+    };
+    rec.items.push(ev);
     commit(rec);
     renderPartido();
-    const detail = kind === 'goal' ? ' Después completá quién la metió.' : '';
-    showToast(`${KIND_LABELS[kind]} · ${minuteLabel(meta, pos.half, pos.sec)}.${detail}`);
+    const detail = kind === 'goal' ? ' Después completá quién la metió.' : (MATCH_SIDE_KINDS.includes(kind) ? ' Después completá quién.' : '');
+    showToast(`${eventLabel(ev)} · ${minuteLabel(meta, pos.half, pos.sec)}.${detail}`);
+  }
+
+  // Jugadas con lado: al tocar el botón la misma fila pregunta "a favor / en contra" (dos toques en total).
+  function askSide(kind) {
+    pendingSide = { kind, pos: position(view().meta, Date.now()) };
+    clearTimeout(sideTimer);
+    sideTimer = setTimeout(cancelSide, SIDE_ASK_MS);
+    renderSidePicker();
+  }
+
+  function chooseSide(side) {
+    if (!pendingSide) return;
+    const { kind, pos } = pendingSide;
+    cancelSide();
+    addEvent(kind, side === 'against' ? 'against' : 'for', pos);
+  }
+
+  function cancelSide() {
+    pendingSide = null;
+    clearTimeout(sideTimer);
+    renderSidePicker();
+  }
+
+  function renderSidePicker() {
+    if (!$('liveSidePicker')) return;
+    $('liveMoreButtons').hidden = !!pendingSide;
+    $('liveSidePicker').hidden = !pendingSide;
+    if (pendingSide) $('liveSideLabel').textContent = KIND_LABELS[pendingSide.kind];
   }
 
   function updateEvent(id, field, value) {
@@ -281,6 +332,9 @@
       }
     } else if (field === 'player' || field === 'assist') {
       ev[field] = String(value).slice(0, 40);
+    } else if (field === 'side') {
+      if (!MATCH_SIDE_KINDS.includes(ev.kind)) return;
+      ev.side = value === 'against' ? 'against' : 'for';
     } else if (field === 'note') {
       ev.note = String(value).slice(0, 120);
     } else {
@@ -743,11 +797,17 @@
       .sort((a, b) => (b.ev.half - a.ev.half) || (b.ev.sec - a.ev.sec) || (b.idx - a.idx))
       .map(x => x.ev);
     el.innerHTML = sorted.map(ev => `
-      <div class="live-row live-row-${ev.kind}" data-id="${escapeHtml(ev.id)}">
-        <span class="live-kind live-kind-${ev.kind}">${KIND_LABELS[ev.kind]}</span>
+      <div class="live-row live-row-${ev.kind}${ev.side ? ' live-row-side-' + ev.side : ''}" data-id="${escapeHtml(ev.id)}">
+        <span class="live-kind live-kind-${ev.kind}">${eventLabel(ev)}</span>
         <label class="live-min">Min
           <input type="number" min="1" max="200" value="${minuteNumber(v.meta, ev.half, ev.sec)}" data-field="minute" aria-label="Minuto">
         </label>
+        ${MATCH_SIDE_KINDS.includes(ev.kind) ? `
+          <select data-field="side" aria-label="A favor o en contra">
+            <option value="for"${ev.side === 'for' ? ' selected' : ''}>A favor</option>
+            <option value="against"${ev.side === 'against' ? ' selected' : ''}>En contra</option>
+          </select>
+          <select data-field="player" aria-label="Quién">${playerOptions(names, ev.player, WHO_PROMPTS[ev.kind][ev.side])}</select>` : ''}
         ${ev.kind === 'goal' ? `
           <select data-field="player" aria-label="Quién metió el gol">${playerOptions(names, ev.player, 'Quién la metió…')}</select>
           <select data-field="assist" aria-label="Quién asistió">${playerOptions(names, ev.assist, 'Asistencia (opcional)')}</select>` : ''}
@@ -869,6 +929,15 @@
       const btn = e.target.closest('[data-kind]');
       if (btn) addEvent(btn.dataset.kind);
     });
+    $('liveMoreButtons').addEventListener('click', e => {
+      const btn = e.target.closest('[data-kind]');
+      if (btn) askSide(btn.dataset.kind);
+    });
+    $('liveSidePicker').addEventListener('click', e => {
+      const btn = e.target.closest('[data-side]');
+      if (btn) chooseSide(btn.dataset.side);
+    });
+    $('liveSideCancel').addEventListener('click', cancelSide);
     $('liveDuration').addEventListener('change', e => setDuration(Number(e.target.value)));
     $('liveAdjust').addEventListener('click', e => {
       const btn = e.target.closest('[data-nudge]');
@@ -881,6 +950,7 @@
       state.activeMatch = e.target.value;
       pinnedName = null;
       hoverName = null;
+      cancelSide();
       disarmPhase();
       resetBringButton();
       saveState();
@@ -966,4 +1036,6 @@
 
   window.setupPartido = setupPartido;
   window.renderPartido = renderPartido;
+  // Lo que comparte con la solapa Jugados (que muestra estos mismos datos ya guardados).
+  window.PartidoUtil = { KIND_LABELS, SIDE_LABELS, eventLabel, minuteLabel, minuteNumber, clockText };
 })();
