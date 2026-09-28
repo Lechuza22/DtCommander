@@ -1,8 +1,8 @@
 # js/sheets-integration.js
 
 Capa de sincronización automática con Google Sheets: no expone ninguna UI
-propia (no hay pestaña "Sincronizar"), solo tres funciones que
-[js/app.js](app.md) y [js/acceso.js](acceso.md) llaman en los momentos
+propia (no hay pestaña "Sincronizar"), solo cuatro funciones que
+[js/app.js](app.md), [js/acceso.js](acceso.md) y [js/ajustes.js](ajustes.md) llaman en los momentos
 justos, más un indicador visual de estado en el header.
 
 Cada pedido lleva las credenciales de quien entró (`Acceso.credenciales()`).
@@ -83,6 +83,13 @@ maneja (ver [[CORS / preflight]] en el Glosario). **Ahora lee la respuesta**
 guardado, el indicador lo dice. Si la respuesta no se puede leer, muestra
 "Enviado (sin confirmación)".
 
+## `gestionarAccesos(params)`
+
+Solo para el DT (con otro rol devuelve `{ error: 'permiso' }`). Hace un `GET` con la clave del DT y los `params` de la acción
+(`accion`: `accesos_listar`, `acceso_generar`, `acceso_activar`, `acceso_quitar`; `rolAcceso`, `para`, `activo`) y devuelve
+`{ accesos: [...] }` o `{ error }`. Si el script no responde como protegido (versión vieja) devuelve
+`{ error: 'sin_candado' }`. Lo usa [Ajustes](ajustes.md).
+
 ## `rechazado(resp)`
 
 Traduce un error del script al indicador: `auth` cierra la sesión (la clave ya
@@ -97,6 +104,7 @@ resto (`permiso`, `formato`...) queda como "Sin permiso para guardar".
 | `fetch` (API del navegador) | Pedidos GET/POST al Web App de Apps Script |
 | [data/google-apps-script.js](../data/google-apps-script.md) | Backend real, desplegado por el usuario sobre su propia Sheet |
 | [js/acceso.js](acceso.md) | Credenciales y rol de quien entró (`window.Acceso`) |
+| [js/ajustes.js](ajustes.md) | Usa `gestionarAccesos()` |
 | `#syncStatus` (elemento en [index.html](../index.md)) | Feedback visual del estado de sync |
 
 Ver también [GLOSSARY.md](../GLOSSARY.md).
