@@ -21,6 +21,11 @@ sea fácil ubicar qué tocar.
 - **Layout general**: `header`, `.tabs`, `.container`, `.card` — la
   estructura de tarjetas que envuelve cada bloque de Evaluador y
   Formación.
+- **Encabezado**: `header` es un `flex` centrado (título, `.rol-chip` y punto de estado) con `padding` de 84 px a los lados
+  para dejar lugar, y `.header-acciones` (con el engranaje y el ⏻) va `position: absolute` en la esquina superior derecha.
+  En pantallas de hasta 640 px el título se achica y el padding izquierdo baja a 12 px; en las de hasta 360 px se achica
+  más. `.rol-chip` es el único que se encoge (con puntos suspensivos) si falta lugar. Ojo con el orden: esas reglas
+  `@media` tienen que ir **después** de `header h1`, si no la regla base las pisa.
 - **Entrada y rol**: `.login-gate` (overlay `position: fixed` a pantalla
   completa que tapa todo), `.login-card` (el formulario en sí, con un
   `select` y los `input`), `.btn-logout` (botón ⏻ en el header; con
