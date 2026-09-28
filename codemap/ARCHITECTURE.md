@@ -11,7 +11,7 @@ zonas y video MP4; si la pelota entra a un arco es gol y la jugada termina), lle
 (reloj, marcador, jugadas con su minuto, cambios y una cancha propia), revise
 después los partidos ya jugados (resumen y línea de tiempo), y planifique
 entrenamientos con una rúbrica de evaluación manual — todo sincronizado
-automáticamente contra una Google Sheet, cuyo acceso protege una clave (el script solo entrega y acepta lo que le corresponde a cada rol).
+automáticamente contra una Google Sheet, cuyo acceso protege una clave (el script solo entrega y acepta lo que le corresponde a cada rol) y el DT administra los accesos desde el panel de Ajustes.
 
 ## Diagrama de módulos
 
@@ -27,6 +27,7 @@ graph LR
     HTML --> SimJS["js/simulacion.js"]
     HTML --> PartidoJS["js/partido.js"]
     HTML --> JugadosJS["js/jugados.js"]
+    HTML --> AjustesJS["js/ajustes.js"]
 
     AccesoJS -->|"guarda la sesión; separa los datos del equipo y de las jugadoras"| LocalStorage["localStorage"]
     AccesoJS -->|"comprueba la clave con verificar()"| SheetsJS
@@ -40,6 +41,8 @@ graph LR
     PartidoJS -->|"usa state, saveState(), los partidos y las tácticas guardadas"| AppJS
     JugadosJS -->|"usa state, showTab() y escapeHtml()"| AppJS
     JugadosJS -->|"nombra las jugadas con PartidoUtil"| PartidoJS
+    AjustesJS -->|"gestionarAccesos()"| SheetsJS
+    AjustesJS -->|"nivel() y PERMISOS"| AccesoJS
 
     SheetsJS -->|"fetch GET/POST"| WebApp["Google Apps Script (Web App)"]
     WebApp -->|"lee/escribe"| Sheet["Google Sheet del usuario"]
@@ -99,6 +102,7 @@ Google — no hay ningún servidor intermedio propio.
 - [index.md](index.md) — estructura HTML
 - [css/styles.md](css/styles.md) — estilos
 - [js/acceso.md](js/acceso.md) — quién entró (DT, soporte o jugadora) y qué puede hacer; la validación real la hace el Apps Script
+- [js/ajustes.md](js/ajustes.md) — panel de Ajustes (solo el DT): accesos con PIN y claves, política de datos y tabla de permisos
 - [js/app.md](js/app.md) — estado, Evaluador, Jugadora, Formación (drag & drop), Entrenamiento
 - [js/simulacion.md](js/simulacion.md) — pestaña Simulación: jugada animada en fases (pelota pegada, notas, tiempos, jugadas de ejemplo), historial y video MP4
 - [archivo/secuencia/LEEME.md](../archivo/secuencia/LEEME.md) — solapa Secuencia archivada (se probó y no se eligió): qué era, qué quedó en la app y cómo reactivarla
