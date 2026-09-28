@@ -112,7 +112,8 @@ flowchart TD
 - **`PLANS`** — `['Plan A', 'Plan B', 'Plan C']`, los tres tableros
   independientes que tiene cada partido.
 - **`DEFAULT_PLAYERS`**, **`STORAGE_KEY`**, **`FIELD_BOUNDS`** — plantel
-  inicial, clave de `localStorage`, y límites válidos de coordenadas
+  inicial, clave de `localStorage` (`dtcomander_data`, o `dtcomander_data_jugadora` si entró una jugadora: la decide
+  `Acceso.storageKey()` de [js/acceso.js](acceso.md)), y límites válidos de coordenadas
   dentro del `viewBox` del SVG (10–290 x, 10–390 y).
 
 ## Estado
