@@ -79,6 +79,19 @@ sea fácil ubicar qué tocar.
   grupo elegido, con botones en forma de píldora. La fila tiene el mismo fondo que el
   grupo activo, así queda como una continuación de él; se desplaza de costado en pantallas
   chicas y se oculta si el grupo tiene una sola solapa.
+- **Solapa Jugados**: `.played-list` / `.played-item` (un botón por partido, con el borde
+  izquierdo verde si ganamos, rojo si perdimos, gris si empatamos y ámbar si no terminó, y
+  `.selected` el elegido), `.played-head` / `.played-score` (encabezado del detalle con el
+  marcador grande), `.played-table` (la tabla A favor / En contra, con `.num-for` en verde y
+  `.num-against` en rojo), y para la línea de tiempo `.played-min`, `.played-text` y
+  `.played-break` (la marca de "Entretiempo"); las filas de la línea de tiempo reusan
+  `.live-row` de En vivo.
+- **Falta, tiro libre, córner, lateral y penal** (En vivo): `.live-more` con
+  `.live-more-buttons` / `.live-more-btn` (la fila chica de cinco botones) y `.live-side` con
+  `.live-side-label` / `.live-side-btn` (`.live-side-for` verde, `.live-side-against` rojo) /
+  `.live-side-cancel` (el selector que la reemplaza al tocar uno, del mismo alto para no
+  mover la barra); `.live-row-side-for` y `.live-row-side-against` pintan el borde de las
+  filas de la lista.
 - **Partido en vivo**: `#matchField` comparte con `#field` el estilo de la cancha,
   `.live-setup` es el panel plegable de arriba (`<details>`), `.live-suggestions` (con
   `.live-sugg-row` y `.sugg-rating`) es el panel de perfil y cambios sugeridos de la
