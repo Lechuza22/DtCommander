@@ -26,16 +26,31 @@ body {
 }
 
 header {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
   background: var(--primary);
   color: #fff;
-  padding: 1rem;
+  padding: 1rem 84px; /* el lugar de los botones de la derecha, para que el título quede centrado */
 }
 
+/* Ajustes y salir: en la esquina superior derecha, fuera del grupo centrado (título, rol y estado). */
+.header-acciones {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.btn-ajustes { display: inline-flex; align-items: center; justify-content: center; padding: 0; }
+.btn-ajustes svg { display: block; }
+
 header h1 {
+  flex: 0 0 auto;
   margin: 0;
   font-size: 24px;
 }
@@ -103,6 +118,8 @@ header h1 {
 .sync-status.sync-denied { color: #ff5c5c; font-weight: 800; }
 
 .rol-chip {
+  flex: 0 1 auto;
+  min-width: 0;
   font-size: 12px;
   background: rgba(255, 255, 255, 0.18);
   border-radius: 999px;
@@ -121,6 +138,16 @@ header h1 {
   padding: 0.6rem 1rem;
   font-size: 13px;
   line-height: 1.4;
+}
+@media (max-width: 640px) {
+  header { padding: 0.9rem 84px 0.9rem 12px; gap: 8px; }
+  header h1 { font-size: 22px; }
+}
+@media (max-width: 360px) {
+  header { padding-right: 76px; gap: 6px; }
+  header h1 { font-size: 17px; }
+  .rol-chip { padding: 2px 8px; }
+  .header-acciones { right: 8px; gap: 6px; }
 }
 
 /* ===== Ajustes (solo el DT) ===== */
