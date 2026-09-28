@@ -1,7 +1,7 @@
 # index.html
 
-El único documento HTML de la app: define la estructura (header, seis
-pestañas, formularios, y la barra "En vivo" de Formación) que [js/app.js](js/app.md) rellena y manipula. No
+El único documento HTML de la app: define la estructura (header, la
+navegación en dos niveles con siete solapas, formularios) que [js/app.js](js/app.md) rellena y manipula. No
 tiene lógica propia — es puro esqueleto con IDs y clases que el
 JavaScript busca por `document.getElementById` / `querySelectorAll`.
 
@@ -14,7 +14,7 @@ flowchart TD
     Header["header (#syncStatus, #logoutBtn)"] --> SheetsIntegration["js/sheets-integration.js: setStatus()"]
     Header --> AuthJS
 
-    TabsNav[".tab-btn (Evaluador / Jugadora / Formación / Táctica / Simulación / Entrenamiento)"] --> AppTabs["js/app.js: setupTabs()"]
+    TabsNav["#groupTabs (Equipo / Planificar / Partido) + #subTabs (las solapas del grupo elegido)"] --> AppTabs["js/app.js: setupTabs() / showTab()"]
 
     PanelEvaluador["#panel-evaluador"] --> PlayerSelect["#playerSelect"]
     PanelEvaluador --> AddRemove["#addPlayerBtn / #addPlayerForm / #removePlayerBtn"]
@@ -34,9 +34,7 @@ flowchart TD
     PanelJugadora --> DashTrend["#dashboardTrendChart (canvas, dentro de .chart-wrap)"]
     PanelJugadora --> DashTimeline["#dashboardTimeline"]
 
-    PanelFormacion["#panel-formacion"] --> LiveBar["#liveBar (fija arriba): #liveClock / #livePhase / #liveScore / #livePhaseBtn / #liveEventButtons / #liveToast / #liveSubChips"]
-    PanelFormacion --> LiveDetails["#liveDetails (debajo de la cancha): #liveDuration / #liveAdjust / #liveResetBtn / #liveSubForm / #liveSubList / #liveEventList"]
-    PanelFormacion --> MatchControls["#matchSelect / #addMatchForm / #removeMatchBtn"]
+    PanelFormacion["#panel-formacion"] --> MatchControls["#matchSelect / #addMatchForm / #removeMatchBtn"]
     PanelFormacion --> PlanTabs["#planTabs (Plan A/B/C)"]
     PanelFormacion --> FormationSelect["#formationSelect"]
     PanelFormacion --> ResetBtn["#resetFormationBtn"]
@@ -63,6 +61,11 @@ flowchart TD
     PanelEntrenamiento --> TrainingSuggestions["#trainingSuggestions"]
     PanelEntrenamiento --> RubricForm["#openRubricBtn / #rubricForm / #rubricCriteria"]
     PanelEntrenamiento --> TrainingLog["#trainingLogList"]
+
+    PanelPartido["#panel-partido"] --> LiveBar["#liveBar (fija arriba): #liveClock / #livePhase / #liveScore / #livePhaseBtn / #liveEventButtons / #liveToast / #liveSubChips"]
+    PanelPartido --> LiveSetup["#liveSetup (plegable): #liveMatchSelect / #liveAddMatchForm / #liveSourceKind / #liveSourcePlan / #liveSourceFormation / #liveSourceTactic / #liveBringBtn"]
+    PanelPartido --> LiveField["#liveAvailable (banco) / #matchField (svg, lo dibuja el JS)"]
+    PanelPartido --> LiveDetails["#liveDetails (debajo de la cancha): #liveDuration / #liveAdjust / #liveResetBtn / #liveSubForm / #liveSubList / #liveEventList"]
 ```
 
 ## Notas de estructura
@@ -71,8 +74,15 @@ flowchart TD
   anidados. `#appRoot` arranca con `hidden` puesto directamente en el
   HTML (no por JS) para que no haya un instante de "flash" de la app
   antes de que [js/auth.js](js/auth.md) decida si mostrarla. Todo lo
-  que describe el resto de este documento (header, tabs, las seis
-  pestañas) vive **dentro** de `#appRoot`.
+  que describe el resto de este documento (header, tabs, las siete
+  solapas) vive **dentro** de `#appRoot`.
+- **`#groupTabs`** y **`#subTabs`** son la navegación en dos niveles. Arriba (`.tab-btn`,
+  con `data-group`) están los tres grupos: Equipo (Evaluador, Jugadora, Entrenamiento),
+  Planificar (Formación, Táctica, Simulación) y Partido. Abajo (`.subtab-btn`, con
+  `data-group` y `data-tab`) van los botones de todas las solapas y `showTab()` deja
+  visibles solo los del grupo elegido (`hidden` en el resto); si el grupo tiene una
+  sola solapa, como Partido, la fila se oculta entera. Cada `<section class="tab-panel">`
+  sigue siendo independiente.
 - **`#syncStatus`**: un punto (`●`) en el header cuyo color y `title`
   controla por completo [js/sheets-integration.js](js/sheets-integration.md)
   — el HTML solo define el estado inicial (`sync-local`).
@@ -125,13 +135,17 @@ flowchart TD
   funciones y su estado, y `app.js` lo invoca con un `typeof` de por medio. Lo mismo con
   `simulacion.js`, que además necesita `simulacion-media.js` ya cargado
   (usa `window.SimMedia` apenas arranca).
-- **`#liveBar`** (arriba de todo en Formación) y **`#liveDetails`** (debajo de
-  la cancha) son el partido en vivo de [js/partido.js](js/partido.md). La barra
-  es `position: sticky` para verla mientras se mira la cancha: reloj, marcador,
-  el botón que avanza la fase, cuatro botones de jugada de un toque y, si hay
-  cambios por hacer, un chip por cada uno con su botón "Hecho". Todo el
-  contenido lo dibuja el JS; el HTML solo define los contenedores. El detalle
-  tiene la duración del partido, los cambios y la lista editable de jugadas.
+- **`#panel-partido`** es la solapa del partido en vivo de [js/partido.js](js/partido.md),
+  y Formación quedó solo con la planificación. Arriba de todo, **`#liveBar`** es
+  `position: sticky` para verla mientras se mira la cancha: reloj, marcador, el botón
+  que avanza la fase, cuatro botones de jugada de un toque y, si hay cambios por
+  hacer, un chip por cada uno con su botón "Hecho". Después, **`#liveSetup`** (un
+  `<details>` que el JS abre antes de empezar y pliega cuando arranca el partido) con
+  el selector de partido y "Traer alineación"; la cancha propia del partido
+  (**`#matchField`**, un `<svg>` con el mismo dibujo que `#field`, y el banco
+  **`#liveAvailable`**); y **`#liveDetails`** con la duración, los cambios y la lista
+  editable de jugadas. El contenido lo dibuja el JS; el HTML solo define los
+  contenedores.
 - **`#tacticField`** es un `<svg>` vacío (solo el `viewBox`): la cancha, las
   jugadoras y los dibujos los crea [js/tactica.js](js/tactica.md). La
   barra de herramientas (`.tactic-tools-card`) queda fija arriba en
