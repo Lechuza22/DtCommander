@@ -308,7 +308,7 @@ cosa (no confundir con las solapas de Plan A/B/C, que son internas a Formación)
 |---|---|
 | **Equipo**: conocer y desarrollar a las jugadoras | Evaluador, Jugadora, Entrenamiento |
 | **Planificar**: lo de antes del partido | Formación, Táctica, Simulación |
-| **Partido**: durante y después | En vivo (`panel-partido`), Jugados (`panel-jugados`: los partidos ya anotados) |
+| **Partido**: durante y después | En vivo (`panel-partido`), Jugados (`panel-jugados`: los partidos ya terminados) |
 
 `TAB_GROUPS` dice qué paneles tiene cada grupo. `showTab(panelId)` es lo único que
 cambia de solapa: marca el grupo activo, muestra solo los botones de ese grupo en
