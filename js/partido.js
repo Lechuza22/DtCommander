@@ -1,10 +1,11 @@
 // ==================================================================
-// DTCommander — Partido en vivo (barra "En vivo" de la solapa Formación)
+// DTCommander — solapa Partido (en vivo)
 //
 // Reloj del partido (1.er tiempo, entretiempo, 2.º tiempo, final), marcador,
-// jugadas de un toque (gol nuestro, gol rival, jugada de gol, jugada peligrosa)
-// y cambios (por hacer -> hecho, con su minuto). Todo se guarda en
-// state.matchLogs (ver app.js) y viaja por la misma sincronización.
+// jugadas de un toque (gol nuestro, gol rival, jugada de gol, jugada peligrosa),
+// la cancha del partido (una copia de la alineación que se trae de Formación o de
+// una táctica guardada) y los cambios (por hacer -> hecho, con su minuto). Todo se
+// guarda en state.matchLogs (ver app.js) y viaja por la misma sincronización.
 // ==================================================================
 (function () {
   const KIND_LABELS = { goal: 'Gol nuestro', goalRival: 'Gol rival', chance: 'Jugada de gol', danger: 'Jugada peligrosa' };
@@ -13,14 +14,20 @@
     idle: 'Iniciar 1.er tiempo', t1: 'Fin del 1.er tiempo', ht: 'Iniciar 2.º tiempo', t2: 'Finalizar partido', end: 'Reabrir partido'
   };
   const ARM_MS = 3000;
+  const SVG_NS = 'http://www.w3.org/2000/svg';
 
   let armedPhase = false;
   let armedReset = false;
+  let armedBring = false;
   let armTimer = null;
   let resetTimer = null;
+  let bringTimer = null;
   let errorTimer = null;
   let toastTimer = null;
   let wakeLock = null;
+  let syncedMatchId = null;
+  let setupMatch = null;
+  let setupPhase = null;
 
   const $ = id => document.getElementById(id);
   const nowIso = () => new Date().toISOString();
@@ -151,12 +158,6 @@
   // ------------------------------------------------------------------
   // Acciones: fases del partido
   // ------------------------------------------------------------------
-  function currentPlacements() {
-    const plan = currentPlan();
-    if (!plan.formations[plan.activeFormation]) plan.formations[plan.activeFormation] = { placements: {} };
-    return plan.formations[plan.activeFormation].placements;
-  }
-
   function disarmPhase() {
     armedPhase = false;
     clearTimeout(armTimer);
@@ -177,7 +178,7 @@
     const m = metaOf(rec);
     const now = Date.now();
     if (m.phase === 'idle') {
-      m.lineup = Object.keys(currentPlacements());
+      m.lineup = Object.keys(m.field);
       m.phase = 't1';
       m.t1Start = now;
       m.t1End = m.t2Start = m.t2End = null;
@@ -294,13 +295,13 @@
   }
 
   // ------------------------------------------------------------------
-  // Acciones: cambios
+  // Acciones: cambios (actúan sobre la cancha del partido, no sobre Formación)
   // ------------------------------------------------------------------
   function addSub(out, inn) {
     if (!out || !inn) { showError('Elegí quién sale y quién entra.'); return false; }
-    const placements = currentPlacements();
-    if (!placements[out]) { showError(`${out} no está en la cancha que estás viendo.`); return false; }
-    if (placements[inn]) { showError(`${inn} ya está en la cancha.`); return false; }
+    const field = view().meta.field;
+    if (!field[out]) { showError(`${out} no está en la cancha del partido.`); return false; }
+    if (field[inn]) { showError(`${inn} ya está en la cancha del partido.`); return false; }
     const rec = recordOf(true);
     if (rec.items.filter(i => i.type === 'sub').length >= MAX_LOG_SUBS) { showError('Ya hay demasiados cambios en este partido.'); return false; }
     rec.items.push({ id: newId('s'), type: 'sub', out, in: inn, status: 'pending', half: 1, sec: 0 });
@@ -314,18 +315,19 @@
     if (!rec) return;
     const sub = rec.items.find(i => i.type === 'sub' && i.id === id);
     if (!sub || sub.status !== 'pending') return;
-    const placements = currentPlacements();
-    if (!placements[sub.out]) { showError(`${sub.out} no está en la cancha que estás viendo (¿otro plan o formación?). Cambiá de plan o quitá el cambio.`); return; }
-    if (placements[sub.in]) { showError(`${sub.in} ya está en la cancha.`); return; }
-    placements[sub.in] = { x: placements[sub.out].x, y: placements[sub.out].y };
-    delete placements[sub.out];
-    const pos = position(metaOf(rec), Date.now());
+    const meta = metaOf(rec);
+    const field = meta.field;
+    if (!field[sub.out]) { showError(`${sub.out} ya no está en la cancha del partido. Quitá el cambio o traé la alineación de nuevo.`); return; }
+    if (field[sub.in]) { showError(`${sub.in} ya está en la cancha del partido.`); return; }
+    field[sub.in] = { x: field[sub.out].x, y: field[sub.out].y };
+    delete field[sub.out];
+    const pos = position(meta, Date.now());
     sub.status = 'done';
     sub.half = pos.half;
     sub.sec = pos.sec;
     commit(rec);
-    renderFormacion();
-    showToast(`Cambio hecho · ${minuteLabel(metaOf(rec), pos.half, pos.sec)}: sale ${sub.out}, entra ${sub.in}.`);
+    renderPartido();
+    showToast(`Cambio hecho · ${minuteLabel(meta, pos.half, pos.sec)}: sale ${sub.out}, entra ${sub.in}.`);
   }
 
   function undoSub(id) {
@@ -333,18 +335,18 @@
     if (!rec) return;
     const sub = rec.items.find(i => i.type === 'sub' && i.id === id);
     if (!sub || sub.status !== 'done') return;
-    const placements = currentPlacements();
-    if (!placements[sub.in] || placements[sub.out]) {
-      showError(`No se puede deshacer: ${sub.in} tiene que estar en la cancha y ${sub.out} afuera (en la cancha que estás viendo).`);
+    const field = metaOf(rec).field;
+    if (!field[sub.in] || field[sub.out]) {
+      showError(`No se puede deshacer: ${sub.in} tiene que estar en la cancha del partido y ${sub.out} afuera.`);
       return;
     }
-    placements[sub.out] = { x: placements[sub.in].x, y: placements[sub.in].y };
-    delete placements[sub.in];
+    field[sub.out] = { x: field[sub.in].x, y: field[sub.in].y };
+    delete field[sub.in];
     sub.status = 'pending';
     sub.half = 1;
     sub.sec = 0;
     commit(rec);
-    renderFormacion();
+    renderPartido();
   }
 
   function removeSub(id) {
@@ -353,6 +355,239 @@
     rec.items = rec.items.filter(i => !(i.type === 'sub' && i.id === id && i.status === 'pending'));
     commit(rec);
     renderPartido();
+  }
+
+  // ------------------------------------------------------------------
+  // Partido: elegir o crear
+  // ------------------------------------------------------------------
+  function renderMatchSelect() {
+    const sel = $('liveMatchSelect');
+    const ids = Object.keys(state.matches).sort((a, b) => (state.matches[b].date || '').localeCompare(state.matches[a].date || ''));
+    sel.innerHTML = ids.map(id => `<option value="${escapeHtml(id)}">${escapeHtml(matchLabel(state.matches[id]))}</option>`).join('');
+    sel.value = state.activeMatch;
+  }
+
+  function confirmAddMatch() {
+    const rival = $('liveNewMatchRival').value.trim();
+    const error = $('liveAddMatchError');
+    error.textContent = '';
+    if (!rival) {
+      error.textContent = 'Ponele un nombre al rival.';
+      $('liveNewMatchRival').focus();
+      return;
+    }
+    const matchId = 'm' + Date.now();
+    state.matches[matchId] = makeMatch(rival, $('liveNewMatchDate').value || todayISO());
+    state.activeMatch = matchId;
+    $('liveAddMatchForm').hidden = true;
+    saveState();
+    renderPartido();
+  }
+
+  // ------------------------------------------------------------------
+  // Traer la alineación (de un plan de Formación o de una táctica guardada)
+  // ------------------------------------------------------------------
+  // Al cambiar de partido se propone su plan y su forma activos.
+  function syncSourceSelects() {
+    const match = currentMatch();
+    const plans = $('liveSourcePlan');
+    const forms = $('liveSourceFormation');
+    if (!plans.options.length) plans.innerHTML = PLANS.map(p => `<option value="${p}">${p}</option>`).join('');
+    if (!forms.options.length) forms.innerHTML = Object.keys(FORMATION_PRESETS).map(f => `<option value="${f}">${f}</option>`).join('');
+    if (syncedMatchId !== state.activeMatch) {
+      syncedMatchId = state.activeMatch;
+      plans.value = match.activePlan;
+      const plan = match.plans[match.activePlan];
+      forms.value = (plan && plan.activeFormation) || forms.options[0].value;
+    }
+    const tactics = (state.tactics || []).filter(t => !t.deleted);
+    const select = $('liveSourceTactic');
+    const keep = select.value;
+    select.innerHTML = tactics.length
+      ? tactics.map(t => `<option value="${escapeHtml(t.id)}">${escapeHtml(t.name || 'Sin nombre')}</option>`).join('')
+      : '<option value="">No hay tácticas guardadas</option>';
+    if (tactics.some(t => t.id === keep)) select.value = keep;
+    const kind = $('liveSourceKind').value;
+    $('liveSourcePlanBox').hidden = kind !== 'plan';
+    $('liveSourceFormationBox').hidden = kind !== 'plan';
+    $('liveSourceTacticBox').hidden = kind !== 'tactic';
+  }
+
+  function sourcePlacements() {
+    if ($('liveSourceKind').value === 'tactic') {
+      const tactic = (state.tactics || []).find(t => t.id === $('liveSourceTactic').value && !t.deleted);
+      if (!tactic) return { error: 'Elegí una táctica guardada.' };
+      const placements = {};
+      tactic.items.filter(i => i.type === 'player' && state.players[i.name]).forEach(i => { placements[i.name] = { x: i.x, y: i.y }; });
+      return { placements, label: `la táctica "${tactic.name || 'Sin nombre'}"` };
+    }
+    const planName = $('liveSourcePlan').value;
+    const shape = $('liveSourceFormation').value;
+    const plan = currentMatch().plans[planName];
+    const formation = plan && plan.formations[shape];
+    const placements = {};
+    Object.keys((formation && formation.placements) || {}).forEach(name => {
+      if (state.players[name]) placements[name] = { x: formation.placements[name].x, y: formation.placements[name].y };
+    });
+    return { placements, label: `${planName} (${shape})` };
+  }
+
+  function resetBringButton() {
+    armedBring = false;
+    clearTimeout(bringTimer);
+    $('liveBringBtn').textContent = 'Traer alineación';
+  }
+
+  function bringLineup() {
+    const error = $('liveBringError');
+    error.textContent = '';
+    const src = sourcePlacements();
+    if (src.error) { error.textContent = src.error; return; }
+    if (!Object.keys(src.placements).length) { error.textContent = `${src.label} no tiene jugadoras ubicadas.`; return; }
+    const v = view();
+    // Con el partido empezado (o con cambios hechos) traer de nuevo pisa lo que se fue moviendo: se pide confirmar.
+    if ((v.meta.phase !== 'idle' || v.subs.some(s => s.status === 'done')) && !armedBring) {
+      armedBring = true;
+      $('liveBringBtn').textContent = '¿Seguro? Se reemplaza la cancha del partido';
+      clearTimeout(bringTimer);
+      bringTimer = setTimeout(resetBringButton, ARM_MS);
+      return;
+    }
+    resetBringButton();
+    const rec = recordOf(true);
+    metaOf(rec).field = src.placements;
+    commit(rec);
+    renderPartido();
+    showToast(`Alineación traída de ${src.label}.`);
+  }
+
+  // ------------------------------------------------------------------
+  // La cancha del partido: fichas y banco arrastrables (mismo gesto que en Formación)
+  // ------------------------------------------------------------------
+  function overField(clientX, clientY) {
+    const rect = $('matchField').getBoundingClientRect();
+    return clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom;
+  }
+
+  function svgPoint(clientX, clientY) {
+    const field = $('matchField');
+    const rect = field.getBoundingClientRect();
+    const box = field.viewBox.baseVal;
+    return clampToField(((clientX - rect.left) / rect.width) * box.width, ((clientY - rect.top) / rect.height) * box.height);
+  }
+
+  // Suelta a una jugadora: dentro de la cancha la ubica; afuera la manda al banco.
+  function dropPlayer(name, clientX, clientY, allowRemove) {
+    const inside = overField(clientX, clientY);
+    if (!inside && !allowRemove) return;
+    const rec = recordOf(true);
+    const field = metaOf(rec).field;
+    if (inside) {
+      const p = svgPoint(clientX, clientY);
+      field[name] = { x: p.x, y: p.y };
+    } else {
+      delete field[name];
+    }
+    commit(rec);
+    renderPartido();
+  }
+
+  function startDrag(evt, name, ghost, onEnd) {
+    document.body.appendChild(ghost);
+    moveGhost(ghost, evt.clientX, evt.clientY);
+    const move = e => moveGhost(ghost, e.clientX, e.clientY);
+    const finish = e => {
+      document.removeEventListener('pointermove', move);
+      document.removeEventListener('pointerup', up);
+      document.removeEventListener('pointercancel', cancel);
+      ghost.remove();
+      onEnd(e);
+    };
+    const up = e => finish(e);
+    const cancel = () => finish(null);
+    document.addEventListener('pointermove', move);
+    document.addEventListener('pointerup', up);
+    document.addEventListener('pointercancel', cancel);
+  }
+
+  function makeGhost(name) {
+    const ghost = document.createElement('div');
+    ghost.className = 'player-chip dragging-ghost';
+    ghost.textContent = name;
+    const player = state.players[name];
+    ghost.style.borderLeft = `5px solid ${colorForPosition(player && player.posPrincipal)}`;
+    return ghost;
+  }
+
+  function onTokenPointerDown(evt) {
+    evt.preventDefault();
+    const g = evt.currentTarget;
+    const name = g.dataset.player;
+    g.style.opacity = '0.25';
+    startDrag(evt, name, makeGhost(name), e => {
+      if (!e) { g.style.opacity = ''; return; }
+      dropPlayer(name, e.clientX, e.clientY, true);
+    });
+  }
+
+  function onChipPointerDown(evt) {
+    const name = evt.currentTarget.dataset.player;
+    startDrag(evt, name, makeGhost(name), e => {
+      if (e) dropPlayer(name, e.clientX, e.clientY, false);
+    });
+  }
+
+  function createToken(name, x, y) {
+    const player = state.players[name];
+    const g = document.createElementNS(SVG_NS, 'g');
+    g.setAttribute('class', 'player-token');
+    g.setAttribute('transform', `translate(${x}, ${y})`);
+    g.dataset.player = name;
+    // Mismo tamaño que en Formación: el círculo visible es más chico que el área de toque.
+    const hit = document.createElementNS(SVG_NS, 'circle');
+    hit.setAttribute('r', 16);
+    hit.setAttribute('fill', 'transparent');
+    const circle = document.createElementNS(SVG_NS, 'circle');
+    circle.setAttribute('r', 12.8);
+    circle.setAttribute('class', 'token-circle');
+    circle.style.fill = colorForPosition(player && player.posPrincipal);
+    circle.style.pointerEvents = 'none';
+    const text = document.createElementNS(SVG_NS, 'text');
+    text.setAttribute('class', 'token-label');
+    text.setAttribute('text-anchor', 'middle');
+    text.setAttribute('dy', 3.2);
+    text.textContent = name.slice(0, 3);
+    g.appendChild(hit);
+    g.appendChild(circle);
+    g.appendChild(text);
+    g.addEventListener('pointerdown', onTokenPointerDown);
+    return g;
+  }
+
+  function createChip(name) {
+    const chip = document.createElement('div');
+    chip.className = 'player-chip';
+    chip.textContent = name;
+    chip.dataset.player = name;
+    const player = state.players[name];
+    chip.style.borderLeft = `5px solid ${colorForPosition(player && player.posPrincipal)}`;
+    chip.addEventListener('pointerdown', onChipPointerDown);
+    return chip;
+  }
+
+  function renderField(meta) {
+    const field = $('matchField');
+    field.querySelectorAll('.player-token').forEach(el => el.remove());
+    Object.keys(meta.field).forEach(name => {
+      if (state.players[name]) field.appendChild(createToken(name, meta.field[name].x, meta.field[name].y));
+    });
+    const bench = $('liveAvailable');
+    bench.innerHTML = '';
+    Object.keys(state.players).filter(n => !meta.field[n]).forEach(n => bench.appendChild(createChip(n)));
+    const count = Object.keys(meta.field).length;
+    $('liveBringHint').textContent = count
+      ? `En la cancha del partido: ${count} jugadoras. Es una copia: lo que muevas o cambies acá no toca tus planes de Formación. Arrastrá a una jugadora afuera de la cancha para mandarla al banco.`
+      : 'Todavía no hay alineación en la cancha del partido. Elegí de dónde traerla y tocá "Traer alineación" (o arrastrá jugadoras desde el banco).';
   }
 
   // ------------------------------------------------------------------
@@ -418,7 +653,7 @@
 
     const list = $('liveSubList');
     if (!pending.length && !done.length) {
-      list.innerHTML = '<p class="hint">Sin cambios. Armalos con "+ Cambio" y marcalos como "Hecho" cuando entren: se anota el minuto y la cancha se actualiza sola.</p>';
+      list.innerHTML = '<p class="hint">Sin cambios. Armalos con "+ Cambio" y marcalos como "Hecho" cuando entren: se anota el minuto y la cancha del partido se actualiza sola.</p>';
       return;
     }
     list.innerHTML = pending.map(s => `
@@ -435,10 +670,9 @@
       </div>`).join('');
   }
 
-  function fillSubForm() {
-    const placements = currentPlacements();
-    const onField = Object.keys(placements);
-    const bench = Object.keys(state.players).filter(n => !placements[n]);
+  function fillSubForm(meta) {
+    const onField = Object.keys(meta.field);
+    const bench = Object.keys(state.players).filter(n => !meta.field[n]);
     const out = $('liveSubOut');
     const inn = $('liveSubIn');
     const keepOut = out.value;
@@ -449,9 +683,26 @@
     if (bench.includes(keepIn)) inn.value = keepIn;
   }
 
+  // El panel de arriba (partido y alineación) se abre solo mientras el partido no empezó y se pliega cuando arranca,
+  // para dejar a la vista la cancha. Si después se abre o se cierra a mano, se respeta.
+  function syncSetupPanel(meta) {
+    const setup = $('liveSetup');
+    if (setupMatch !== state.activeMatch) setup.open = meta.phase === 'idle';
+    else if (setupPhase === 'idle' && meta.phase !== 'idle') setup.open = false;
+    setupMatch = state.activeMatch;
+    setupPhase = meta.phase;
+    const match = state.matches[state.activeMatch];
+    $('liveSetupSummary').textContent =
+      `Partido y alineación · vs ${(match && match.rival) || 'Rival'} · ${Object.keys(meta.field).length} en la cancha`;
+  }
+
   function renderPartido() {
     if (!$('liveBar')) return;
+    currentMatch(); // si el partido activo dejó de existir, se recupera solo
     const v = view();
+    renderMatchSelect();
+    syncSourceSelects();
+
     const dur = $('liveDuration');
     if (!dur.options.length) dur.innerHTML = MATCH_DURATIONS.map(d => `<option value="${d}">${d} min por tiempo</option>`).join('');
     dur.value = String(v.meta.duration);
@@ -471,7 +722,9 @@
 
     renderSubs(v);
     renderEvents(v);
-    if (!$('liveSubForm').hidden) fillSubForm();
+    renderField(v.meta);
+    syncSetupPanel(v.meta);
+    if (!$('liveSubForm').hidden) fillSubForm(v.meta);
     syncWakeLock(isRunning(v.meta));
   }
 
@@ -501,10 +754,44 @@
     });
     $('liveResetBtn').addEventListener('click', resetLog);
 
+    // Elegir o crear el partido
+    $('liveMatchSelect').addEventListener('change', e => {
+      state.activeMatch = e.target.value;
+      disarmPhase();
+      resetBringButton();
+      saveState();
+      renderPartido();
+    });
+    $('liveAddMatchBtn').addEventListener('click', () => {
+      const form = $('liveAddMatchForm');
+      form.hidden = !form.hidden;
+      if (!form.hidden) {
+        $('liveNewMatchRival').value = '';
+        $('liveNewMatchDate').value = todayISO();
+        $('liveAddMatchError').textContent = '';
+        $('liveNewMatchRival').focus();
+      }
+    });
+    $('liveCancelAddMatchBtn').addEventListener('click', () => { $('liveAddMatchForm').hidden = true; });
+    $('liveConfirmAddMatchBtn').addEventListener('click', confirmAddMatch);
+    $('liveNewMatchRival').addEventListener('keydown', e => { if (e.key === 'Enter') confirmAddMatch(); });
+
+    // Traer la alineación
+    $('liveSourceKind').addEventListener('change', () => { resetBringButton(); syncSourceSelects(); });
+    $('liveSourcePlan').addEventListener('change', e => {
+      const plan = currentMatch().plans[e.target.value];
+      if (plan && plan.activeFormation) $('liveSourceFormation').value = plan.activeFormation;
+      resetBringButton();
+    });
+    $('liveSourceFormation').addEventListener('change', resetBringButton);
+    $('liveSourceTactic').addEventListener('change', resetBringButton);
+    $('liveBringBtn').addEventListener('click', bringLineup);
+
+    // Cambios
     $('liveAddSubBtn').addEventListener('click', () => {
       const form = $('liveSubForm');
       form.hidden = !form.hidden;
-      if (!form.hidden) fillSubForm();
+      if (!form.hidden) fillSubForm(view().meta);
     });
     $('liveSubCancel').addEventListener('click', () => { $('liveSubForm').hidden = true; });
     $('liveSubConfirm').addEventListener('click', () => {
@@ -518,6 +805,7 @@
     $('liveSubChips').addEventListener('click', subAction);
     $('liveSubList').addEventListener('click', subAction);
 
+    // Jugadas
     const eventList = $('liveEventList');
     eventList.addEventListener('click', e => {
       const btn = e.target.closest('[data-act="remove-event"]');
