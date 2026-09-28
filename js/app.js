@@ -216,7 +216,8 @@ const FORMATION_PRESETS = {
 
 const PLANS = ['Plan A', 'Plan B', 'Plan C'];
 const DEFAULT_PLAYERS = ['Ine', 'Agos'];
-const STORAGE_KEY = 'dtcomander_data';
+// Lo guardado en el dispositivo depende de quién entró (las jugadoras tienen su propio espacio, ver js/acceso.js).
+const STORAGE_KEY = (window.Acceso && window.Acceso.storageKey()) || 'dtcomander_data';
 const FIELD_BOUNDS = { minX: 10, maxX: 290, minY: 10, maxY: 390 };
 
 // ==================================================================
