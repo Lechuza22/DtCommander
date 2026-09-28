@@ -74,7 +74,14 @@ sea fácil ubicar qué tocar.
   sin eso una columna de la grilla no se achica por debajo de su contenido y la
   fila de pestañas de fase (que no se puede comprimir) ensanchaba toda la
   página en celulares.
-- **Partido en vivo**: `.live-bar` (la barra de arriba de Formación: `position:
+- **Navegación en dos niveles**: `.tabs` / `.tab-btn` son los tres grupos de arriba
+  (Equipo, Planificar, Partido) y `.subtabs` / `.subtab-btn` la fila de las solapas del
+  grupo elegido, con botones en forma de píldora. La fila tiene el mismo fondo que el
+  grupo activo, así queda como una continuación de él; se desplaza de costado en pantallas
+  chicas y se oculta si el grupo tiene una sola solapa.
+- **Partido en vivo**: `#matchField` comparte con `#field` el estilo de la cancha,
+  `.live-setup` es el panel plegable de arriba (`<details>`), y `.live-bar` (la barra
+  de arriba de Partido: `position:
   sticky; top: 0` para que quede a la vista mientras se mira la cancha, con
   `.live-running` cuando el reloj corre), `.live-top` con `.live-clock-box` /
   `.live-clock` / `.live-phase` / `.live-score` / `.live-main-btn` (el botón que
