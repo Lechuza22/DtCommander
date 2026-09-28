@@ -28,6 +28,10 @@
   let syncedMatchId = null;
   let setupMatch = null;
   let setupPhase = null;
+  let pinnedName = null;
+  let hoverName = null;
+  let suggestionsChart = null;
+  const TAP_PX = 6; // menos que esto entre que se apoya y se suelta es un toque, no un arrastre
 
   const $ = id => document.getElementById(id);
   const nowIso = () => new Date().toISOString();
@@ -492,16 +496,26 @@
     renderPartido();
   }
 
-  function startDrag(evt, name, ghost, onEnd) {
-    document.body.appendChild(ghost);
-    moveGhost(ghost, evt.clientX, evt.clientY);
-    const move = e => moveGhost(ghost, e.clientX, e.clientY);
+  // Un toque sin mover el dedo no es un arrastre: el "ghost" recién aparece cuando el puntero se aleja unos píxeles.
+  // onEnd(evento, seMovió): evento es null si el gesto se canceló.
+  function startDrag(evt, name, onEnd, onStart) {
+    let ghost = null;
+    const move = e => {
+      if (!ghost) {
+        if (Math.hypot(e.clientX - evt.clientX, e.clientY - evt.clientY) < TAP_PX) return;
+        ghost = makeGhost(name);
+        document.body.appendChild(ghost);
+        if (onStart) onStart();
+      }
+      moveGhost(ghost, e.clientX, e.clientY);
+    };
     const finish = e => {
       document.removeEventListener('pointermove', move);
       document.removeEventListener('pointerup', up);
       document.removeEventListener('pointercancel', cancel);
-      ghost.remove();
-      onEnd(e);
+      const moved = !!ghost;
+      if (ghost) ghost.remove();
+      onEnd(e, moved);
     };
     const up = e => finish(e);
     const cancel = () => finish(null);
@@ -519,21 +533,23 @@
     return ghost;
   }
 
+  // Arrastrar mueve a la jugadora; un toque (o clic) sin arrastrar fija el panel con su perfil y los cambios sugeridos.
   function onTokenPointerDown(evt) {
     evt.preventDefault();
     const g = evt.currentTarget;
     const name = g.dataset.player;
-    g.style.opacity = '0.25';
-    startDrag(evt, name, makeGhost(name), e => {
-      if (!e) { g.style.opacity = ''; return; }
+    startDrag(evt, name, (e, moved) => {
+      g.style.opacity = '';
+      if (!e) return;
+      if (!moved) { togglePin(name); return; }
       dropPlayer(name, e.clientX, e.clientY, true);
-    });
+    }, () => { g.style.opacity = '0.25'; });
   }
 
   function onChipPointerDown(evt) {
     const name = evt.currentTarget.dataset.player;
-    startDrag(evt, name, makeGhost(name), e => {
-      if (e) dropPlayer(name, e.clientX, e.clientY, false);
+    startDrag(evt, name, (e, moved) => {
+      if (e && moved) dropPlayer(name, e.clientX, e.clientY, false);
     });
   }
 
@@ -561,6 +577,18 @@
     g.appendChild(circle);
     g.appendChild(text);
     g.addEventListener('pointerdown', onTokenPointerDown);
+    // Con mouse, pasar por encima muestra el panel (vista previa) sin fijarlo; con el dedo no hay "pasar por encima".
+    // En pantallas chicas el panel es una hoja fija abajo que taparía la ficha: ahí solo se fija con un toque.
+    g.addEventListener('pointerenter', e => {
+      if (e.pointerType !== 'mouse' || pinnedName || window.matchMedia('(max-width: 640px)').matches) return;
+      hoverName = name;
+      renderSuggestions();
+    });
+    g.addEventListener('pointerleave', () => {
+      if (hoverName !== name) return;
+      hoverName = null;
+      renderSuggestions();
+    });
     return g;
   }
 
@@ -575,6 +603,98 @@
     return chip;
   }
 
+  // ------------------------------------------------------------------
+  // Panel de la jugadora elegida: su perfil (gráfico) y los cambios sugeridos del banco
+  // ------------------------------------------------------------------
+  function ratingBadge(name) {
+    const p = state.players[name];
+    const shown = Math.round(average(p.attrs, p) * SCORE_SCALE);
+    const bg = colorForAttrValue(shown / SCORE_SCALE);
+    return `<span class="sugg-rating" style="background:${bg};color:${readableTextColor(bg)}" title="Promedio">${shown}</span>`;
+  }
+
+  const positionsText = p => [p.posPrincipal, p.posSecundaria].filter(Boolean).join(' / ') || 'sin puesto';
+
+  // Del banco: primero las que juegan el mismo puesto (principal o secundario), de mejor a peor promedio.
+  function benchCandidates(name, field) {
+    const player = state.players[name];
+    const rate = n => average(state.players[n].attrs, state.players[n]);
+    const best = list => list.slice().sort((a, b) => rate(b) - rate(a));
+    const bench = Object.keys(state.players).filter(n => n !== name && !field[n]);
+    const wanted = [player.posPrincipal, player.posSecundaria].filter(Boolean);
+    const same = bench.filter(n => {
+      const o = state.players[n];
+      return wanted.includes(o.posPrincipal) || wanted.includes(o.posSecundaria);
+    });
+    return { same: best(same), all: best(bench) };
+  }
+
+  function markSelected() {
+    $('matchField').querySelectorAll('.player-token').forEach(g => g.classList.toggle('selected', g.dataset.player === pinnedName));
+  }
+
+  function renderSuggestions() {
+    const panel = $('liveSuggestions');
+    if (!panel) return;
+    const field = view().meta.field;
+    if (pinnedName && !field[pinnedName]) pinnedName = null; // la que estaba fijada salió de la cancha
+    const name = pinnedName || hoverName;
+    const player = name && field[name] && state.players[name];
+    if (!player) { panel.hidden = true; return; }
+
+    const pinned = name === pinnedName;
+    const cands = benchCandidates(name, field);
+    const list = cands.same.length ? cands.same : cands.all;
+    $('liveSuggestionsFor').textContent = `${name} (${positionsText(player)})`;
+    $('liveSuggestionsTitle').textContent = cands.same.length ? 'Cambios sugeridos (su puesto)' : 'Nadie del banco juega su puesto. Banco';
+    $('liveSuggestionsList').innerHTML = list.length ? list.map(n => {
+      const o = state.players[n];
+      return `<div class="live-sugg-row" style="border-left-color:${colorForPosition(o.posPrincipal)}">
+        <div class="live-sugg-info">
+          <span class="live-sugg-name">${escapeHtml(n)}</span>
+          <span class="live-sugg-pos">${escapeHtml(positionsText(o))}</span>
+        </div>
+        ${ratingBadge(n)}
+        ${pinned ? `<button type="button" class="btn btn-small" data-act="suggest-sub" data-out="${escapeHtml(name)}" data-in="${escapeHtml(n)}">Cambio</button>` : ''}
+      </div>`;
+    }).join('') : '<p class="hint">No hay nadie en el banco.</p>';
+    $('liveSuggestionsHint').textContent = pinned
+      ? 'Tocá "Cambio" para dejar armado que ella sale y entra esa compañera.'
+      : 'Hacé clic en la jugadora para fijar este panel y armar un cambio.';
+    $('liveSuggestionsClose').hidden = !pinned;
+    // Primero se muestra el panel y recién después se dibuja el gráfico: un canvas oculto mide 0 x 0.
+    panel.hidden = false;
+    if ($('panel-partido').classList.contains('active')) {
+      suggestionsChart = buildOrUpdateRadar(suggestionsChart, 'liveSuggestionsRadar', name, ATTRIBUTES.map(a => player.attrs[a]), true);
+    }
+  }
+
+  function togglePin(name) {
+    pinnedName = pinnedName === name ? null : name;
+    hoverName = null;
+    markSelected();
+    renderSuggestions();
+  }
+
+  function unpin() {
+    pinnedName = null;
+    hoverName = null;
+    markSelected();
+    renderSuggestions();
+  }
+
+  // Un toque en una sugerida deja armado el cambio "por hacer" (sale la elegida, entra la sugerida).
+  function suggestSub(out, inn) {
+    if (view().subs.some(s => s.status === 'pending' && s.out === out && s.in === inn)) {
+      showToast(`El cambio ${out} → ${inn} ya está por hacer.`);
+      return;
+    }
+    if (!addSub(out, inn)) return;
+    unpin();
+    renderPartido();
+    showToast(`Cambio por hacer: sale ${out}, entra ${inn}. Marcalo "Hecho" cuando entre.`);
+  }
+
   function renderField(meta) {
     const field = $('matchField');
     field.querySelectorAll('.player-token').forEach(el => el.remove());
@@ -584,6 +704,7 @@
     const bench = $('liveAvailable');
     bench.innerHTML = '';
     Object.keys(state.players).filter(n => !meta.field[n]).forEach(n => bench.appendChild(createChip(n)));
+    markSelected();
     const count = Object.keys(meta.field).length;
     $('liveBringHint').textContent = count
       ? `En la cancha del partido: ${count} jugadoras. Es una copia: lo que muevas o cambies acá no toca tus planes de Formación. Arrastrá a una jugadora afuera de la cancha para mandarla al banco.`
@@ -723,6 +844,7 @@
     renderSubs(v);
     renderEvents(v);
     renderField(v.meta);
+    renderSuggestions();
     syncSetupPanel(v.meta);
     if (!$('liveSubForm').hidden) fillSubForm(v.meta);
     syncWakeLock(isRunning(v.meta));
@@ -757,6 +879,8 @@
     // Elegir o crear el partido
     $('liveMatchSelect').addEventListener('change', e => {
       state.activeMatch = e.target.value;
+      pinnedName = null;
+      hoverName = null;
       disarmPhase();
       resetBringButton();
       saveState();
@@ -786,6 +910,17 @@
     $('liveSourceFormation').addEventListener('change', resetBringButton);
     $('liveSourceTactic').addEventListener('change', resetBringButton);
     $('liveBringBtn').addEventListener('click', bringLineup);
+
+    // Panel de la jugadora elegida (perfil + cambios sugeridos)
+    $('liveSuggestionsList').addEventListener('click', e => {
+      const btn = e.target.closest('[data-act="suggest-sub"]');
+      if (btn) suggestSub(btn.dataset.out, btn.dataset.in);
+    });
+    $('liveSuggestionsClose').addEventListener('click', unpin);
+    // Tocar la cancha (fuera de una jugadora) suelta el panel fijado.
+    $('matchField').addEventListener('pointerdown', e => {
+      if (pinnedName && !e.target.closest('.player-token')) unpin();
+    });
 
     // Cambios
     $('liveAddSubBtn').addEventListener('click', () => {
