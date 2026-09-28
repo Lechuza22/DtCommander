@@ -80,7 +80,7 @@ sea fácil ubicar qué tocar.
   grupo activo, así queda como una continuación de él; se desplaza de costado en pantallas
   chicas y se oculta si el grupo tiene una sola solapa.
 - **Solapa Jugados**: `.played-list` / `.played-item` (un botón por partido, con el borde
-  izquierdo verde si ganamos, rojo si perdimos, gris si empatamos y ámbar si no terminó, y
+  izquierdo verde si ganamos, rojo si perdimos, y gris si empatamos, y
   `.selected` el elegido), `.played-head` / `.played-score` (encabezado del detalle con el
   marcador grande), `.played-table` (la tabla A favor / En contra, con `.num-for` en verde y
   `.num-against` en rojo), y para la línea de tiempo `.played-min`, `.played-text` y
