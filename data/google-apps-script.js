@@ -117,7 +117,7 @@ const PIN_BLOQUEO_MS = 30 * 60 * 1000;
 // "Ágos  " y "agos" son la misma persona.
 function nombreNormal_(s) {
   return String(s === null || s === undefined ? '' : s).trim().toLowerCase()
-    .normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ');
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ');
 }
 
 // PIN: solo dígitos. Clave del soporte: minúsculas y números (se toleran guiones y espacios). Clave del DT: tal cual.
