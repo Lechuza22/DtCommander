@@ -18,6 +18,10 @@ conocer los nombres del plantel).
 - **Política de datos**: texto fijo (un borrador en español: qué se guarda, dónde, quién ve qué, claves, buenas
   prácticas, conservación y borrado). Dice que no es asesoramiento legal y menciona la Ley 25.326 de Protección de los
   Datos Personales (Argentina).
+- **Conexión**: el historial que guarda este dispositivo (`Acceso.diagnostico()`): una tabla con hora, pedido (entrar, cargar
+  datos, guardar), cuánto tardó y cómo salió, y un resumen ("Cargar los datos tardó en promedio X s… El script rechazó la
+  clave N veces"). Sirve para saber si una demora es de Google o de la app, y para ver si el script rechaza la clave de vez en
+  cuando. El botón "Borrar historial" lo vacía. No contiene claves.
 - **Permisos**: la tabla de `Acceso.PERMISOS` (solapa × rol: "Ve y edita", "Solo ve" o "Sin acceso"). Por ahora los roles
   son fijos.
 
